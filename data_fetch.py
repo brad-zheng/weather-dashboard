@@ -69,7 +69,7 @@ def fetch_weather_history(city_name, lat, lng, year):
         "longitude": lng,
         "start_date": s,
         "end_date": e,
-        "daily": "temperature_2m_max,temperature_2m_min",
+        "daily": "temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max",
         "timezone": "Asia/Shanghai"
     }
     data = fetch_json(ARCHIVE_API, params)
@@ -81,7 +81,9 @@ def fetch_weather_history(city_name, lat, lng, year):
     return {
         "time": daily.get("time", []),
         "max": [rt(v) for v in daily.get("temperature_2m_max", [])],
-        "min": [rt(v) for v in daily.get("temperature_2m_min", [])]
+        "min": [rt(v) for v in daily.get("temperature_2m_min", [])],
+        "wc": daily.get("weather_code", []),
+        "ws": [rt(v) for v in daily.get("wind_speed_10m_max", [])]
     }
 
 def fetch_weather_current_year(city_name, lat, lng):
@@ -100,13 +102,13 @@ def fetch_weather_current_year(city_name, lat, lng):
     arch_params = {
         "latitude": lat, "longitude": lng,
         "start_date": archive_s, "end_date": archive_e,
-        "daily": "temperature_2m_max,temperature_2m_min",
+        "daily": "temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max",
         "timezone": "Asia/Shanghai"
     }
     fore_params = {
         "latitude": lat, "longitude": lng,
         "start_date": fore_s, "end_date": fore_e,
-        "daily": "temperature_2m_max,temperature_2m_min",
+        "daily": "temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max",
         "timezone": "Asia/Shanghai"
     }
 
@@ -119,7 +121,9 @@ def fetch_weather_current_year(city_name, lat, lng):
     merged = {
         "time": list(arch_daily.get("time", [])) + list(fore_daily.get("time", [])),
         "max": [rt(v) for v in list(arch_daily.get("temperature_2m_max", [])) + list(fore_daily.get("temperature_2m_max", []))],
-        "min": [rt(v) for v in list(arch_daily.get("temperature_2m_min", [])) + list(fore_daily.get("temperature_2m_min", []))]
+        "min": [rt(v) for v in list(arch_daily.get("temperature_2m_min", [])) + list(fore_daily.get("temperature_2m_min", []))],
+        "wc": list(arch_daily.get("weather_code", [])) + list(fore_daily.get("weather_code", [])),
+        "ws": [rt(v) for v in list(arch_daily.get("wind_speed_10m_max", [])) + list(fore_daily.get("wind_speed_10m_max", []))]
     }
     return merged if merged["time"] else None
 
@@ -156,6 +160,8 @@ def generate_js(data, timestamp):
                 lines.append(f'      time: {json.dumps(year_data["time"])},')
                 lines.append(f'      max:  {json.dumps(year_data["max"])},')
                 lines.append(f'      min:  {json.dumps(year_data["min"])},')
+                lines.append(f'      wc:   {json.dumps(year_data.get("wc", []))},')
+                lines.append(f'      ws:   {json.dumps(year_data.get("ws", []))},')
                 lines.append('    },')
             else:
                 lines.append(f'    "{year_key}": null,')

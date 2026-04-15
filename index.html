@@ -224,15 +224,15 @@
         </div>
         <div class="kpi-card p-4">
             <div class="kpi-bar-green"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">未来平均最高</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">今日天气</div>
             <div style="font-size:28px;font-weight:800;color:#10b981;" id="k3">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Avg High (Forecast)</div>
+            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Weather Condition</div>
         </div>
         <div class="kpi-card p-4">
             <div class="kpi-bar-purple"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">最大温差</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">最大风速</div>
             <div style="font-size:28px;font-weight:800;color:#a855f7;" id="k4">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Max Temperature Range</div>
+            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Max Wind Speed (km/h)</div>
         </div>
     </div>
 
@@ -506,18 +506,28 @@ function loadCity(name) {
     const today = new Date().toISOString().split('T')[0];
     const idx = d.time.findIndex(t => t === today);
 
+    // 天气码 → 中文描述
+    const WMO_TEXT = {
+        0:'☀️ 晴',1:'🌤️ 少云',2:'⛅ 多云',3:'☁️ 阴',
+        45:'🌫️ 雾',48:'🌫️ 冻雾',
+        51:'🌦️ 小毛毛雨',53:'🌧️ 中毛毛雨',55:'🌧️ 大毛毛雨',
+        56:'🌧️ 冻毛毛雨',57:'🌧️ 大冻毛毛雨',
+        61:'🌧️ 小雨',63:'🌧️ 中雨',65:'🌧️ 大雨',
+        66:'🌧️ 冻雨',67:'🌧️ 大冻雨',
+        71:'🌨️ 小雪',73:'🌨️ 中雪',75:'❄️ 大雪',
+        77:'🌨️ 雪粒',
+        80:'🌦️ 小阵雨',81:'🌧️ 中阵雨',82:'⛈️ 大阵雨',
+        85:'🌨️ 小阵雪',86:'❄️ 大阵雪',
+        95:'⛈️ 雷暴',96:'⛈️ 雷暴+冰雹',99:'⛈️ 强雷暴+冰雹'
+    };
+
     if (idx >= 0) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
-        const future = d.max.slice(idx);
-        const avgHigh = future.reduce((a,b) => a+b, 0) / future.length;
-        document.getElementById('k3').textContent = Math.round(avgHigh) + '°C';
-        let maxRange = 0;
-        for (let i = idx; i < d.time.length; i++) {
-            const diff = d.max[i] - d.min[i];
-            if (diff > maxRange) maxRange = diff;
-        }
-        document.getElementById('k4').textContent = Math.round(maxRange) + '°C';
+        const wc = d.wc ? d.wc[idx] : null;
+        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (WMO_TEXT[wc] || '未知') : '--';
+        const ws = d.ws ? d.ws[idx] : null;
+        document.getElementById('k4').textContent = (ws !== null && ws !== undefined) ? ws + ' km/h' : '--';
     }
 
     renderCharts(cityData);
