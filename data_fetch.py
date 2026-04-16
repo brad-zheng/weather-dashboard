@@ -23,6 +23,10 @@ TARGET_CITIES = []  # 例如 ["北京","上海","广州"] 留空=全部城市
 # Open-Meteo API 地址
 ARCHIVE_API = "https://archive-api.open-meteo.com/v1/archive"
 FORECAST_API = "https://api.open-meteo.com/v1/forecast"
+
+# 和风天气 API（从环境变量读取）
+QWEATHER_API = "https://devapi.qweather.com/v7/indices/1d"
+QWEATHER_KEY = os.environ.get("QWEATHER_KEY", "")
 # ─────────────────────────────────────────────────────
 
 def rt(v):
@@ -86,6 +90,26 @@ def fetch_weather_history(city_name, lat, lng, year):
         "ws": [rt(v) for v in daily.get("wind_speed_10m_max", [])]
     }
 
+def fetch_dressing_index(lat, lng):
+    """从和风天气抓取穿衣指数（type=3），返回 {date: category} 映射"""
+    if not QWEATHER_KEY:
+        print("  [警告] 未配置 QWEATHER_KEY，跳过穿衣指数")
+        return {}
+    params = {
+        "location": f"{lng},{lat}",
+        "type": "3",
+        "key": QWEATHER_KEY
+    }
+    data = fetch_json(QWEATHER_API, params)
+    if not data or data.get("code") != "200":
+        print(f"  [警告] 和风天气请求失败: {data}")
+        return {}
+    result = {}
+    for item in data.get("daily", []):
+        result[item["date"]] = item.get("category", "")
+    print(f"  穿衣指数: {result}")
+    return result
+
 def fetch_weather_current_year(city_name, lat, lng):
     """抓取当前年数据：历史部分用 archive + 未来部分用 forecast，合并"""
     today = date.today()
@@ -125,6 +149,12 @@ def fetch_weather_current_year(city_name, lat, lng):
         "wc": list(arch_daily.get("weather_code", [])) + list(fore_daily.get("weather_code", [])),
         "ws": [rt(v) for v in list(arch_daily.get("wind_speed_10m_max", [])) + list(fore_daily.get("wind_speed_10m_max", []))]
     }
+
+    # 和风天气穿衣指数（只查一次，复用到当年数据所有日期）
+    dress_map = fetch_dressing_index(lng, lat)
+    if dress_map:
+        merged["dress"] = [dress_map.get(t, "") for t in merged["time"]]
+
     return merged if merged["time"] else None
 
 def fetch_city(city_name, lat, lng, current_year):
@@ -142,7 +172,7 @@ def generate_js(data, timestamp):
         "// ============================================",
         "// 天气数据文件 - 自动生成，请勿手动编辑",
         f"// 生成时间: {timestamp}",
-        "// 数据来源: Open-Meteo API",
+        "// 数据来源: Open-Meteo API + 和风天气生活指数",
         "// ============================================",
         "",
         "// 城市列表（含经纬度）",
@@ -162,6 +192,7 @@ def generate_js(data, timestamp):
                 lines.append(f'      min:  {json.dumps(year_data["min"])},')
                 lines.append(f'      wc:   {json.dumps(year_data.get("wc", []))},')
                 lines.append(f'      ws:   {json.dumps(year_data.get("ws", []))},')
+                lines.append(f'      dress: {json.dumps(year_data.get("dress", []))},')
                 lines.append('    },')
             else:
                 lines.append(f'    "{year_key}": null,')

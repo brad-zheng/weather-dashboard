@@ -29,6 +29,7 @@ jobs:
         run: python data_fetch.py
         env:
           TZ: Asia/Shanghai
+          QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
 
       - name: 提交并推送 data.js
         run: |
