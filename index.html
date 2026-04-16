@@ -3,291 +3,517 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天气数据看板</title>
+    <title>天气数据看板 · WEATHER HUD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="data.js"></script>
     <style>
-        * { box-sizing: border-box; }
+        /* ── 底层：科技网格背景 ─────────────────────── */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #050810;
             min-height: 100vh;
-            padding: 20px;
+            color: #e2e8f0;
+            overflow-x: hidden;
         }
-        .glass-card {
-            background: rgba(255,255,255,0.95);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.8);
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
         }
-        .header-gradient {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            border-radius: 16px;
-            color: white;
+        /* 扫描线 */
+        body::after {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.08) 2px,
+                rgba(0,0,0,0.08) 4px
+            );
         }
-        .kpi-card {
-            background: white;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-            overflow: hidden;
-        }
-        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.13); }
+        #dashboard { position: relative; z-index: 1; }
 
-        .city-search-wrap { position: relative; }
-        .city-input {
-            width: 180px; padding: 8px 36px 8px 12px;
-            border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.15); color: white;
-            font-size: 14px; outline: none; transition: border 0.2s, background 0.2s;
+        /* ── 玻璃面板 ─────────────────────────────── */
+        .glass-panel {
+            background: rgba(8, 20, 50, 0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 180, 255, 0.18);
+            border-radius: 14px;
+            box-shadow:
+                0 0 20px rgba(0, 180, 255, 0.07),
+                inset 0 1px 0 rgba(255,255,255,0.06),
+                0 8px 32px rgba(0,0,0,0.5);
+            position: relative;
         }
-        .city-input::placeholder { color: rgba(255,255,255,0.6); }
-        .city-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.22); }
+        .glass-panel::before {
+            content: '';
+            position: absolute; inset: 0; border-radius: 14px;
+            background: linear-gradient(135deg, rgba(0,180,255,0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        /* 面板辉光边框 hover */
+        .glass-panel:hover {
+            border-color: rgba(0, 180, 255, 0.35);
+            box-shadow:
+                0 0 30px rgba(0, 180, 255, 0.12),
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                0 8px 40px rgba(0,0,0,0.6);
+        }
+        /* 发光彩条（顶部装饰条） */
+        .glow-bar {
+            height: 2px;
+            border-radius: 2px 2px 0 0;
+            box-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+        }
+        .glow-bar-blue   { background: #38bdf8; color: #38bdf8; }
+        .glow-bar-red    { background: #f87171; color: #f87171; }
+        .glow-bar-green  { background: #34d399; color: #34d399; }
+        .glow-bar-purple { background: #a78bfa; color: #a78bfa; }
+        .glow-bar-amber  { background: #fbbf24; color: #fbbf24; }
+
+        /* ── 标题栏 ───────────────────────────────── */
+        .hud-header {
+            background: rgba(4, 10, 28, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 180, 255, 0.15);
+            border-radius: 14px;
+        }
+        .hud-title {
+            font-size: 18px; font-weight: 800;
+            letter-spacing: 2px; color: #e0f2fe;
+            text-shadow: 0 0 20px rgba(56,189,248,0.6);
+        }
+        .hud-sub {
+            font-size: 11px; color: rgba(148,163,184,0.7);
+            letter-spacing: 1px;
+        }
+        .hud-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #34d399; box-shadow: 0 0 8px #34d399;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .hud-dot.warn { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+        .hud-dot.err  { background: #f87171; box-shadow: 0 0 8px #f87171; }
+
+        /* ── KPI 卡片 ──────────────────────────────── */
+        .kpi-card {
+            background: rgba(8, 18, 45, 0.6);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(0, 180, 255, 0.12);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,180,255,0.05);
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(0, 180, 255, 0.3);
+            box-shadow: 0 0 25px rgba(0,180,255,0.15), 0 12px 30px rgba(0,0,0,0.4);
+        }
+        .kpi-card:hover .kpi-value {
+            text-shadow: 0 0 20px currentColor;
+        }
+        .kpi-label {
+            font-size: 11px; color: rgba(148,163,184,0.8);
+            letter-spacing: 1.5px; text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .kpi-value {
+            font-size: 30px; font-weight: 900;
+            line-height: 1; letter-spacing: -1px;
+            transition: text-shadow 0.3s;
+        }
+        .kpi-en {
+            font-size: 10px; color: rgba(100,116,139,0.6);
+            letter-spacing: 1.5px; text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .kpi-icon {
+            font-size: 28px; opacity: 0.8;
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+        .kpi-red    .kpi-value { color: #f87171; }
+        .kpi-blue   .kpi-value { color: #38bdf8; }
+        .kpi-green  .kpi-value { color: #34d399; }
+        .kpi-purple .kpi-value { color: #a78bfa; }
+        .kpi-amber  .kpi-value { color: #fbbf24; }
+
+        /* ── 按钮 ─────────────────────────────────── */
+        .btn-hud {
+            padding: 7px 16px; border-radius: 8px;
+            border: 1px solid rgba(0,180,255,0.3);
+            background: rgba(0,180,255,0.08);
+            color: #7dd3fc; font-size: 13px; cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .btn-hud:hover {
+            background: rgba(0,180,255,0.18);
+            border-color: rgba(0,180,255,0.6);
+            color: #bae6fd;
+            box-shadow: 0 0 12px rgba(0,180,255,0.2);
+        }
+        .btn-primary {
+            padding: 7px 18px; border-radius: 8px;
+            background: linear-gradient(135deg, rgba(0,180,255,0.25), rgba(56,189,248,0.15));
+            border: 1px solid rgba(0,180,255,0.4);
+            color: #7dd3fc; font-size: 13px; cursor: pointer; font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            box-shadow: 0 0 14px rgba(0,180,255,0.15);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, rgba(0,180,255,0.35), rgba(56,189,248,0.25));
+            border-color: rgba(0,180,255,0.7);
+            color: #e0f2fe;
+            box-shadow: 0 0 20px rgba(0,180,255,0.3);
+        }
+        .btn-screenshot {
+            padding: 7px 16px; border-radius: 8px;
+            background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.12));
+            border: 1px solid rgba(251,191,36,0.35);
+            color: #fcd34d; font-size: 13px; cursor: pointer; font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 5px;
+            box-shadow: 0 0 12px rgba(251,191,36,0.1);
+        }
+        .btn-screenshot:hover {
+            background: linear-gradient(135deg, rgba(251,191,36,0.3), rgba(245,158,11,0.2));
+            border-color: rgba(251,191,36,0.6);
+            box-shadow: 0 0 18px rgba(251,191,36,0.25);
+        }
+
+        /* ── 城市搜索 ──────────────────────────────── */
+        .city-input {
+            width: 180px; padding: 7px 32px 7px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,180,255,0.25);
+            background: rgba(0,0,0,0.3);
+            color: #e2e8f0; font-size: 13px; outline: none;
+            transition: all 0.2s;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .city-input::placeholder { color: rgba(148,163,184,0.4); }
+        .city-input:focus {
+            border-color: rgba(0,180,255,0.6);
+            background: rgba(0,0,0,0.4);
+            box-shadow: 0 0 12px rgba(0,180,255,0.15), inset 0 1px 3px rgba(0,0,0,0.3);
+        }
         .city-clear-btn {
             position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-            color: rgba(255,255,255,0.6); cursor: pointer; font-size:16px; display:none;
+            color: rgba(148,163,184,0.5); cursor: pointer; font-size: 14px; display: none;
         }
         .city-dropdown {
-            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-            background: white; border-radius: 10px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+            background: rgba(6, 14, 36, 0.97);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0,180,255,0.2);
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 15px rgba(0,180,255,0.05);
             max-height: 260px; overflow-y: auto; z-index: 9999; display: none;
         }
         .city-dropdown.open { display: block; }
         .city-dropdown-item {
-            padding: 9px 14px; font-size: 14px; cursor: pointer;
-            color: #333; transition: background 0.15s;
+            padding: 9px 14px; font-size: 13px; cursor: pointer;
+            color: #94a3b8; transition: all 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
         }
-        .city-dropdown-item:hover { background: #f0f4ff; color: #4f6ef7; }
-        .city-dropdown-item .province { font-size: 11px; color: #999; margin-left: 6px; }
+        .city-dropdown-item:hover {
+            background: rgba(0,180,255,0.1);
+            color: #7dd3fc;
+        }
+        .city-dropdown-item .prov { font-size: 11px; color: rgba(100,116,139,0.5); margin-left: 6px; }
 
-        .cmp-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        /* ── 多城市对比 ────────────────────────────── */
+        .cmp-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
         .cmp-tab {
             display: flex; align-items: center; gap: 6px;
-            padding: 6px 12px; border-radius: 20px;
-            background: #f1f5f9; color: #475569; font-size: 13px;
-            cursor: pointer; transition: all 0.15s; border: 1.5px solid transparent;
+            padding: 5px 12px; border-radius: 20px;
+            background: rgba(0,180,255,0.08);
+            border: 1px solid rgba(0,180,255,0.2);
+            color: #7dd3fc; font-size: 12px;
+            cursor: pointer; transition: all 0.15s;
         }
-        .cmp-tab:hover { background: #e2e8f0; }
-        .cmp-tab.active { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: white; }
+        .cmp-tab:hover { background: rgba(0,180,255,0.15); border-color: rgba(0,180,255,0.4); }
         .cmp-tab .remove {
             width: 16px; height: 16px; border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0.7;
+            background: rgba(0,180,255,0.15);
+            display: flex; align-items: center; justify-content: center; font-size: 10px; color: #7dd3fc;
         }
+        .cmp-tab .remove:hover { background: rgba(248,113,113,0.2); color: #f87171; }
         .cmp-add-btn {
-            padding: 6px 14px; border-radius: 20px;
-            background: #f0f4ff; color: #6366f1; border: 1.5px dashed #a5b4fc;
-            cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 4px;
+            padding: 5px 14px; border-radius: 20px;
+            background: transparent;
+            border: 1px dashed rgba(0,180,255,0.25);
+            color: rgba(125,211,252,0.5);
+            cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; gap: 4px;
+            transition: all 0.15s;
         }
-        .cmp-add-btn:hover { background: #e0e7ff; }
-        .cmp-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cmp-add-btn:hover { background: rgba(0,180,255,0.08); border-color: rgba(0,180,255,0.4); color: #7dd3fc; }
+        .cmp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        /* ── 城市选择弹窗 ──────────────────────────── */
         .city-picker-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
             z-index: 10000; display: none; align-items: center; justify-content: center;
         }
         .city-picker-overlay.open { display: flex; }
         .city-picker-modal {
-            background: white; border-radius: 16px;
+            background: rgba(6, 14, 36, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0,180,255,0.2);
+            border-radius: 14px;
             width: 90%; max-width: 400px; max-height: 70vh;
             display: flex; flex-direction: column;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 30px rgba(0,180,255,0.08);
         }
         .city-picker-header {
-            padding: 16px; border-bottom: 1px solid #e2e8f0;
+            padding: 16px; border-bottom: 1px solid rgba(0,180,255,0.12);
             display: flex; justify-content: space-between; align-items: center;
+            color: #7dd3fc; font-weight: 700; font-size: 15px; letter-spacing: 1px;
         }
-        .city-picker-search { padding: 10px 16px; border-bottom: 1px solid #e2e8f0; }
+        .city-picker-search { padding: 12px 16px; border-bottom: 1px solid rgba(0,180,255,0.1); }
         .city-picker-search input {
             width: 100%; padding: 8px 12px; border-radius: 8px;
-            border: 1.5px solid #e2e8f0; font-size: 14px; outline: none;
+            border: 1px solid rgba(0,180,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: #e2e8f0; font-size: 14px; outline: none;
         }
-        .city-picker-search input:focus { border-color: #6366f1; }
-        .city-picker-list { overflow-y: auto; max-height: 300px; padding: 8px 0; }
+        .city-picker-search input:focus { border-color: rgba(0,180,255,0.5); }
+        .city-picker-list { overflow-y: auto; max-height: 300px; }
         .city-picker-item {
-            padding: 10px 16px; cursor: pointer; font-size: 14px;
+            padding: 10px 16px; cursor: pointer; font-size: 13px;
             display: flex; justify-content: space-between; align-items: center;
+            color: #94a3b8; transition: all 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
         }
-        .city-picker-item:hover { background: #f8fafc; }
-        .city-picker-item .prov { color: #94a3b8; font-size: 12px; }
+        .city-picker-item:hover { background: rgba(0,180,255,0.08); color: #7dd3fc; }
+        .city-picker-item .prov { color: rgba(100,116,139,0.5); font-size: 12px; }
 
-        .btn-primary {
-            padding: 8px 20px; border-radius: 10px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: white; border: none; cursor: pointer;
-            font-size: 14px; font-weight: 600;
-            transition: opacity 0.2s, transform 0.15s;
-            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        /* ── 图表标题区 ────────────────────────────── */
+        .chart-title {
+            font-size: 13px; font-weight: 700;
+            color: #7dd3fc; letter-spacing: 1px;
+            margin-bottom: 2px;
         }
-        .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
-        .btn-secondary {
-            padding: 8px 16px; border-radius: 10px;
-            background: rgba(255,255,255,0.15); color: white;
-            border: 1.5px solid rgba(255,255,255,0.3);
-            cursor: pointer; font-size: 14px; transition: background 0.2s;
+        .chart-sub { font-size: 11px; color: rgba(100,116,139,0.6); letter-spacing: 0.5px; }
+
+        /* ── 数据表格 ─────────────────────────────── */
+        .data-table th {
+            background: rgba(0,180,255,0.06);
+            border-bottom: 1px solid rgba(0,180,255,0.12);
+            color: rgba(148,163,184,0.8);
+            font-weight: 600; font-size: 12px;
+            letter-spacing: 1px;
+            padding: 10px 12px;
         }
-        .btn-secondary:hover { background: rgba(255,255,255,0.25); }
-        .btn-screenshot {
-            padding: 8px 16px; border-radius: 10px;
-            background: linear-gradient(135deg, #f59e0b, #f97316);
-            color: white; border: none; cursor: pointer;
-            font-size: 14px; font-weight: 600;
-            box-shadow: 0 4px 14px rgba(245,158,11,0.4);
-            transition: opacity 0.2s, transform 0.15s;
-            display: flex; align-items: center; gap: 6px;
+        .data-table td {
+            padding: 8px 12px; font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: #94a3b8;
         }
-        .btn-screenshot:hover { opacity: 0.92; transform: translateY(-1px); }
+        .data-table tr:hover td { background: rgba(0,180,255,0.04); }
+        .today-row td { background: rgba(251,191,36,0.06) !important; color: #fcd34d !important; }
 
-        .chart-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-        .chart-sub { font-size: 12px; color: #94a3b8; }
+        /* ── 折叠按钮 ─────────────────────────────── */
+        .collapse-btn {
+            padding: 5px 12px; border-radius: 8px;
+            background: rgba(0,180,255,0.08);
+            border: 1px solid rgba(0,180,255,0.2);
+            color: rgba(125,211,252,0.7);
+            cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+        }
+        .collapse-btn:hover { background: rgba(0,180,255,0.15); border-color: rgba(0,180,255,0.4); color: #7dd3fc; }
 
-        .data-table th { background: linear-gradient(135deg, #f8fafc, #f1f5f9); color: #475569; font-weight: 600; font-size: 12px; }
-        .data-table tr:hover td { background: #fafbff; }
-        .today-row td { background: #fff9e6 !important; }
+        /* ── 滚动条 ───────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,180,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,180,255,0.4); }
 
-        .kpi-bar-red { height: 4px; background: linear-gradient(90deg,#f87171,#ef4444); border-radius: 2px; margin-bottom: 12px; }
-        .kpi-bar-blue { height: 4px; background: linear-gradient(90deg,#60a5fa,#3b82f6); border-radius: 2px; margin-bottom: 12px; }
-        .kpi-bar-green { height: 4px; background: linear-gradient(90deg,#34d399,#10b981); border-radius: 2px; margin-bottom: 12px; }
-        .kpi-bar-purple { height: 4px; background: linear-gradient(90deg,#c084fc,#a855f7); border-radius: 2px; margin-bottom: 12px; }
-
-        .spinner { width: 44px; height: 44px; border: 4px solid #e0e7ff; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        /* ── 加载动画 ─────────────────────────────── */
+        .spinner {
+            width: 44px; height: 44px;
+            border: 2px solid rgba(0,180,255,0.15);
+            border-top-color: rgba(0,180,255,0.8);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .collapse-btn {
-            padding: 6px 12px; border-radius: 8px;
-            background: #f1f5f9; color: #475569;
-            border: none; cursor: pointer; font-size: 12px;
-            display: flex; align-items: center; gap: 4px; transition: background 0.15s;
+        /* ── 数字跳动 ─────────────────────────────── */
+        @keyframes num-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        .collapse-btn:hover { background: #e2e8f0; }
+        .kpi-value { animation: num-in 0.4s ease-out; }
 
-        .data-status {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 4px 10px; border-radius: 20px; font-size: 11px;
-        }
-        .data-status.ok { background: #d1fae5; color: #065f46; }
-        .data-status.stale { background: #fef3c7; color: #92400e; }
-        .data-status.no-data { background: #fee2e2; color: #991b1b; }
-
+        /* ── 响应式 ───────────────────────────────── */
         @media (max-width: 640px) {
             .city-input { width: 140px; }
-            body { padding: 12px; }
         }
     </style>
 </head>
 <body>
-<div class="max-w-6xl mx-auto" id="dashboard">
+<div class="max-w-7xl mx-auto px-4 py-5" id="dashboard">
 
-    <!-- Header -->
-    <div class="header-gradient p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
+    <!-- ══ 标题栏 ══════════════════════════════════════ -->
+    <div class="hud-header p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-            <div style="width:46px;height:46px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">🌡️</div>
+            <!-- 雷达图标 SVG -->
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="22" cy="22" r="20" stroke="rgba(56,189,248,0.3)" stroke-width="1"/>
+                <circle cx="22" cy="22" r="13" stroke="rgba(56,189,248,0.2)" stroke-width="1"/>
+                <circle cx="22" cy="22" r="6" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+                <line x1="22" y1="22" x2="38" y2="10" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 22 22" to="360 22 22" dur="4s" repeatCount="indefinite"/>
+                </line>
+                <circle cx="22" cy="22" r="2" fill="#38bdf8"/>
+            </svg>
             <div>
-                <h1 style="font-size:20px;font-weight:800;letter-spacing:0.5px;">天气数据看板</h1>
-                <p style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">
-                    今天 ±14天 · 三年温度对比
-                    <span id="dataStatusBadge" class="data-status ok" style="margin-left:8px;">
-                        <span id="dataStatusDot">●</span><span id="dataStatusText">数据已就绪</span>
+                <div class="hud-title">WEATHER · HUD</div>
+                <div class="hud-sub flex items-center gap-3" style="margin-top:4px;">
+                    <span>TODAY ±14D · 3-YEAR COMPARE</span>
+                    <span class="flex items-center gap-1.5" id="dataStatusBadge">
+                        <span class="hud-dot" id="dataStatusDot"></span>
+                        <span id="dataStatusText" style="font-size:10px;">DATA READY</span>
                     </span>
-                </p>
+                </div>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <div class="city-search-wrap" id="mainSearchWrap">
-                <input type="text" id="mainCityInput" class="city-input" placeholder="🔍 输入城市名..." autocomplete="off" />
+            <div style="position:relative;" id="mainSearchWrap">
+                <input type="text" id="mainCityInput" class="city-input" placeholder="🔍 SEARCH CITY..." autocomplete="off" />
                 <span class="city-clear-btn" id="mainCityClear" onclick="clearMainCity()">✕</span>
                 <div class="city-dropdown" id="mainCityDropdown"></div>
             </div>
-            <button class="btn-secondary" onclick="reloadCity()">↺ 刷新</button>
-            <button class="btn-screenshot" onclick="takeScreenshot()">📸 截图</button>
+            <button class="btn-hud" onclick="reloadCity()">↺ REFRESH</button>
+            <button class="btn-screenshot" onclick="takeScreenshot()">📸 CAPTURE</button>
         </div>
     </div>
 
-    <!-- KPI -->
+    <!-- ══ KPI 四卡片 ════════════════════════════════════ -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <div class="kpi-card p-4">
-            <div class="kpi-bar-red"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">今日最高温</div>
-            <div style="font-size:28px;font-weight:800;color:#ef4444;" id="k1">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">High Temperature</div>
+        <!-- 最高温 -->
+        <div class="kpi-card kpi-red p-4">
+            <div class="glow-bar glow-bar-red mb-3"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="kpi-label">MAX TEMP</div>
+                    <div class="kpi-value" id="k1">--°</div>
+                    <div class="kpi-en">High Temperature</div>
+                </div>
+                <div class="kpi-icon" style="color:#f87171;">▲</div>
+            </div>
         </div>
-        <div class="kpi-card p-4">
-            <div class="kpi-bar-blue"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">今日最低温</div>
-            <div style="font-size:28px;font-weight:800;color:#3b82f6;" id="k2">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Low Temperature</div>
+        <!-- 最低温 -->
+        <div class="kpi-card kpi-blue p-4">
+            <div class="glow-bar glow-bar-blue mb-3"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="kpi-label">MIN TEMP</div>
+                    <div class="kpi-value" id="k2">--°</div>
+                    <div class="kpi-en">Low Temperature</div>
+                </div>
+                <div class="kpi-icon" style="color:#38bdf8;">▼</div>
+            </div>
         </div>
-        <div class="kpi-card p-4">
-            <div class="kpi-bar-green"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">今日天气</div>
-            <div style="font-size:28px;font-weight:800;color:#10b981;" id="k3">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Weather Condition</div>
+        <!-- 天气状况 -->
+        <div class="kpi-card kpi-green p-4">
+            <div class="glow-bar glow-bar-green mb-3"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="kpi-label">CONDITION</div>
+                    <div class="kpi-value" id="k3" style="font-size:20px;">--</div>
+                    <div class="kpi-en">Weather Status</div>
+                </div>
+                <div class="kpi-icon" style="color:#34d399;">◈</div>
+            </div>
         </div>
-        <div class="kpi-card p-4">
-            <div class="kpi-bar-purple"></div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">穿衣建议</div>
-            <div style="font-size:20px;font-weight:800;color:#a855f7;" id="k4">--</div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">Dressing Index</div>
+        <!-- 穿衣建议 -->
+        <div class="kpi-card kpi-purple p-4">
+            <div class="glow-bar glow-bar-purple mb-3"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="kpi-label">DRESSING</div>
+                    <div class="kpi-value" id="k4" style="font-size:18px;">--</div>
+                    <div class="kpi-en">Dressing Index</div>
+                </div>
+                <div class="kpi-icon" style="color:#a78bfa;">✦</div>
+            </div>
         </div>
     </div>
 
-    <!-- Charts -->
+    <!-- ══ 温度折线图 ══════════════════════════════════ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-        <div class="glass-card p-5">
-            <div class="chart-title">🔴 最高温度折线图</div>
-            <div class="chart-sub mb-3">三年同期最高温度对比 · 红色虚线为今日</div>
-            <div style="height:280px"><canvas id="c1"></canvas></div>
+        <div class="glass-panel p-5">
+            <div class="chart-title">▲ MAX TEMP · 3-YEAR CURVE</div>
+            <div class="chart-sub mb-3">— Red dashed = Today</div>
+            <div style="height:260px"><canvas id="c1"></canvas></div>
         </div>
-        <div class="glass-card p-5">
-            <div class="chart-title">🔵 最低温度折线图</div>
-            <div class="chart-sub mb-3">三年同期最低温度对比 · 红色虚线为今日</div>
-            <div style="height:280px"><canvas id="c2"></canvas></div>
+        <div class="glass-panel p-5">
+            <div class="chart-title">▼ MIN TEMP · 3-YEAR CURVE</div>
+            <div class="chart-sub mb-3">— Red dashed = Today</div>
+            <div style="height:260px"><canvas id="c2"></canvas></div>
         </div>
     </div>
 
-    <!-- Compare -->
-    <div class="glass-card p-5 mb-5">
+    <!-- ══ 多城市对比 ══════════════════════════════════ -->
+    <div class="glass-panel p-5 mb-5">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-                <div class="chart-title">🏙️ 多城市温度对比</div>
-                <div class="chart-sub">最多5个城市 · 同年温度对比</div>
+                <div class="chart-title">◈ MULTI-CITY COMPARE</div>
+                <div class="chart-sub">Max 5 cities · Same year</div>
             </div>
-            <button class="btn-primary" onclick="runCompare()">🔄 开始对比</button>
+            <button class="btn-primary" onclick="runCompare()">▶ RUN COMPARE</button>
         </div>
         <div class="cmp-tabs" id="cmpTabs">
-            <button class="cmp-add-btn" id="cmpAddBtn" onclick="openCityPicker()">＋ 添加城市</button>
+            <button class="cmp-add-btn" id="cmpAddBtn" onclick="openCityPicker()">＋ ADD CITY</button>
         </div>
         <div id="cmpChartsArea" style="display:none;">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                    <div class="chart-sub mb-2" style="font-weight:600;color:#ef4444;">🔴 最高温度对比</div>
-                    <div style="height:240px"><canvas id="c3"></canvas></div>
+                    <div class="chart-sub mb-2" style="color:#f87171;font-weight:600;">▲ MAX TEMP</div>
+                    <div style="height:230px"><canvas id="c3"></canvas></div>
                 </div>
                 <div>
-                    <div class="chart-sub mb-2" style="font-weight:600;color:#3b82f6;">🔵 最低温度对比</div>
-                    <div style="height:240px"><canvas id="c4"></canvas></div>
+                    <div class="chart-sub mb-2" style="color:#38bdf8;font-weight:600;">▼ MIN TEMP</div>
+                    <div style="height:230px"><canvas id="c4"></canvas></div>
                 </div>
             </div>
         </div>
-        <div id="cmpEmpty" style="text-align:center;padding:40px 0;color:#94a3b8;font-size:14px;">
-            点击「+ 添加城市」选择城市，然后点击「开始对比」
+        <div id="cmpEmpty" style="text-align:center;padding:40px 0;color:rgba(100,116,139,0.4);font-size:13px;letter-spacing:1px;">
+            + ADD CITY TO START COMPARE
         </div>
     </div>
 
-    <!-- Table -->
-    <div class="glass-card p-5">
+    <!-- ══ 详细数据表 ══════════════════════════════════ -->
+    <div class="glass-panel p-5">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <div class="chart-title">📋 详细数据</div>
-                <div class="chart-sub">三年同期逐日数据 · 温度已四舍五入</div>
+                <div class="chart-title">▤ DETAILED DATA TABLE</div>
+                <div class="chart-sub">3-Year daily data · Current year highlighted</div>
             </div>
             <button class="collapse-btn" onclick="toggleTable()">
-                <span id="tableToggleIcon">👁️</span><span id="tableToggleText">隐藏</span>
+                <span id="tableToggleIcon">◉</span><span id="tableToggleText">HIDE</span>
             </button>
         </div>
         <div id="tableSection">
@@ -295,13 +521,13 @@
                 <table class="w-full data-table" style="border-collapse:collapse;">
                     <thead>
                         <tr>
-                            <th class="p-3 text-left" style="border-radius:8px 0 0 8px;">日期</th>
-                            <th class="p-3 text-center" id="th24a">-- 高</th>
-                            <th class="p-3 text-center" id="th24b">-- 低</th>
-                            <th class="p-3 text-center" id="th25a">-- 高</th>
-                            <th class="p-3 text-center" id="th25b">-- 低</th>
-                            <th class="p-3 text-center" style="color:#ef4444;" id="th26a">-- 高</th>
-                            <th class="p-3 text-center" style="color:#3b82f6;border-radius:0 8px 8px 0;" id="th26b">-- 低</th>
+                            <th class="text-left" style="border-radius:8px 0 0 8px;">DATE</th>
+                            <th class="text-center" id="th24a">-- HIGH</th>
+                            <th class="text-center" id="th24b">-- LOW</th>
+                            <th class="text-center" id="th25a">-- HIGH</th>
+                            <th class="text-center" id="th25b">-- LOW</th>
+                            <th class="text-center" style="color:#f87171;" id="th26a">-- HIGH</th>
+                            <th class="text-center" style="color:#38bdf8;border-radius:0 8px 8px 0;" id="th26b">-- LOW</th>
                         </tr>
                     </thead>
                     <tbody id="tb"></tbody>
@@ -309,25 +535,26 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- 城市选择弹窗 -->
+</div><!-- /dashboard -->
+
+<!-- ══ 城市选择弹窗 ════════════════════════════════════ -->
 <div class="city-picker-overlay" id="cityPickerOverlay" onclick="closeCityPicker(event)">
     <div class="city-picker-modal" onclick="event.stopPropagation()">
         <div class="city-picker-header">
-            <span style="font-weight:700;color:#1e293b;">选择城市</span>
-            <button onclick="closeCityPicker()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;">✕</button>
+            <span>SELECT CITY</span>
+            <button onclick="closeCityPicker()" style="background:none;border:none;font-size:18px;color:rgba(148,163,184,0.5);cursor:pointer;">✕</button>
         </div>
         <div class="city-picker-search">
-            <input type="text" id="pickerSearch" placeholder="输入城市名搜索..." oninput="filterPickerCities(this.value)" />
+            <input type="text" id="pickerSearch" placeholder="Search city..." oninput="filterPickerCities(this.value)" />
         </div>
         <div class="city-picker-list" id="pickerList"></div>
     </div>
 </div>
 
-<!-- 截图提示 -->
-<div id="screenshotToast" class="hidden" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:12px 24px;border-radius:10px;font-size:14px;z-index:10001;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
-    📸 截图已复制/保存
+<!-- ══ 截图提示 ════════════════════════════════════════ -->
+<div id="screenshotToast" class="hidden" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(6,14,36,0.97);border:1px solid rgba(0,180,255,0.3);color:#7dd3fc;padding:12px 24px;border-radius:10px;font-size:13px;z-index:10001;box-shadow:0 8px 24px rgba(0,0,0,0.5),0 0 15px rgba(0,180,255,0.1);letter-spacing:0.5px;">
+    ✓ DONE
 </div>
 
 <script>
@@ -337,44 +564,36 @@ let currentCity = null;
 let cmpCities = [];
 let tableCollapsed = false;
 let cityList = [];
-let currentYear = new Date().getFullYear();  // 动态年份
+let currentYear = new Date().getFullYear();
 let yearKeys = [`${(currentYear-2)%100}`, `${(currentYear-1)%100}`, `${currentYear%100}`];
 
-// ── 初始化 ───────────────────────────────────────────────
+// ── 初始化 ──────────────────────────────────────────────
 (function init() {
-    // 设置表头年份
-    document.getElementById('th24a').textContent = `${currentYear-2} 高`;
-    document.getElementById('th24b').textContent = `${currentYear-2} 低`;
-    document.getElementById('th25a').textContent = `${currentYear-1} 高`;
-    document.getElementById('th25b').textContent = `${currentYear-1} 低`;
-    document.getElementById('th26a').textContent = `${currentYear} 高`;
-    document.getElementById('th26b').textContent = `${currentYear} 低`;
+    document.getElementById('th24a').textContent = `${currentYear-2} HIGH`;
+    document.getElementById('th24b').textContent = `${currentYear-2} LOW`;
+    document.getElementById('th25a').textContent = `${currentYear-1} HIGH`;
+    document.getElementById('th25b').textContent = `${currentYear-1} LOW`;
+    document.getElementById('th26a').textContent = `${currentYear} HIGH`;
+    document.getElementById('th26b').textContent = `${currentYear} LOW`;
 
-    // 检查 data.js 是否已加载
     if (typeof CITIES === 'undefined' || typeof WEATHER_DATA === 'undefined') {
-        setDataStatus('no-data', '●', '数据加载失败');
+        setDataStatus('err', '●', 'DATA LOAD FAILED');
         return;
     }
-
-    setDataStatus('ok', '●', `数据日期: ${DATA_DATE || '未知'}`);
+    setDataStatus('ok', '●', `DATA: ${DATA_DATE || 'UNKNOWN'}`);
     cityList = Object.keys(CITIES).map(name => ({ name, ...CITIES[name] }));
-
-    // 初始化主城市搜索
     initMainSearch();
-
-    // 渲染城市选择弹窗列表（一次渲染，后用JS过滤）
     renderPickerList(cityList);
 })();
 
 // ── 数据状态 ─────────────────────────────────────────────
 function setDataStatus(type, dot, text) {
     const badge = document.getElementById('dataStatusBadge');
-    badge.className = `data-status ${type}`;
-    document.getElementById('dataStatusDot').textContent = dot;
+    badge.querySelector('.hud-dot').className = `hud-dot ${type !== 'ok' ? type : ''}`;
     document.getElementById('dataStatusText').textContent = text;
 }
 
-// ── 主城市搜索 ────────────────────────────────────────────
+// ── 主城市搜索 ───────────────────────────────────────────
 let mainSearchCtrl;
 function initMainSearch() {
     const inp = document.getElementById('mainCityInput');
@@ -386,7 +605,7 @@ function initMainSearch() {
 function clearMainCity() {
     mainSearchCtrl && mainSearchCtrl.clear();
     currentCity = null;
-    ['k1','k2','k3','k4'].forEach(id => document.getElementById(id).textContent = '--');
+    ['k1','k2','k3','k4'].forEach(id => document.getElementById(id).textContent = id === 'k3' ? '--' : '--°');
     document.getElementById('tb').innerHTML = '';
     if (ch1) { ch1.destroy(); ch1 = null; }
     if (ch2) { ch2.destroy(); ch2 = null; }
@@ -396,48 +615,34 @@ function clearMainCity() {
 
 function reloadCity() {
     const val = document.getElementById('mainCityInput').value.trim();
-    if (val && CITIES[val]) {
-        loadCity(val);
-    }
+    if (val && CITIES[val]) loadCity(val);
 }
 
 // ── 城市搜索组件 ──────────────────────────────────────────
 function createCitySearch(inputEl, dropdownEl, onSelect, clearBtnEl) {
     let filtered = [];
     let activeIdx = -1;
-
     function search(q) {
         if (!q) { filtered = []; dropdownEl.classList.remove('open'); return; }
         filtered = cityList.filter(c => c.name.includes(q) || c.province.includes(q)).slice(0, 50);
-        activeIdx = -1;
-        render();
+        activeIdx = -1; render();
     }
-
     function render() {
         if (filtered.length === 0) { dropdownEl.classList.remove('open'); return; }
         dropdownEl.innerHTML = filtered.map((c, i) =>
-            `<div class="city-dropdown-item ${i===activeIdx?'active':''}" data-idx="${i}">
-                ${c.name}<span class="province">${c.province}</span>
-            </div>`
+            `<div class="city-dropdown-item ${i===activeIdx?'active':''}" data-idx="${i}">${c.name}<span class="prov">${c.province}</span></div>`
         ).join('');
         dropdownEl.classList.add('open');
     }
-
     inputEl.addEventListener('input', e => {
         if (clearBtnEl) clearBtnEl.style.display = e.target.value ? 'block' : 'none';
         search(e.target.value.trim());
     });
-
     inputEl.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
-            if (dropdownEl.classList.contains('open') && activeIdx >= 0) {
-                doSelect(filtered[activeIdx]);
-            } else if (filtered.length > 0) {
-                doSelect(filtered[0]);
-            } else {
-                const exact = cityList.find(c => c.name === inputEl.value.trim());
-                if (exact) doSelect(exact);
-            }
+            if (dropdownEl.classList.contains('open') && activeIdx >= 0) doSelect(filtered[activeIdx]);
+            else if (filtered.length > 0) doSelect(filtered[0]);
+            else { const exact = cityList.find(c => c.name === inputEl.value.trim()); if (exact) doSelect(exact); }
             e.preventDefault();
         } else if (e.key === 'ArrowDown') {
             if (!dropdownEl.classList.contains('open')) return;
@@ -445,89 +650,70 @@ function createCitySearch(inputEl, dropdownEl, onSelect, clearBtnEl) {
         } else if (e.key === 'ArrowUp') {
             if (!dropdownEl.classList.contains('open')) return;
             activeIdx = Math.max(activeIdx-1, 0); render(); e.preventDefault();
-        } else if (e.key === 'Escape') {
-            dropdownEl.classList.remove('open');
-        }
+        } else if (e.key === 'Escape') { dropdownEl.classList.remove('open'); }
     });
-
     inputEl.addEventListener('blur', () => {
         setTimeout(() => {
             dropdownEl.classList.remove('open');
             const val = inputEl.value.trim();
-            if (val && CITIES[val] && val !== currentCity) {
-                loadCity(val);
-            }
+            if (val && CITIES[val] && val !== currentCity) loadCity(val);
         }, 200);
     });
-
     dropdownEl.addEventListener('mousedown', e => {
         const item = e.target.closest('.city-dropdown-item');
-        if (item) { doSelect(filtered[parseInt(item.dataset.idx)]); }
+        if (item) doSelect(filtered[parseInt(item.dataset.idx)]);
     });
-
-    document.addEventListener('click', e => {
-        if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
-            dropdownEl.classList.remove('open');
-        }
-    });
-
     function doSelect(c) {
         inputEl.value = c.name;
         dropdownEl.classList.remove('open');
         if (clearBtnEl) clearBtnEl.style.display = 'block';
         onSelect(c.name);
     }
-
-    return {
-        clear: () => {
-            inputEl.value = ''; filtered = [];
-            dropdownEl.classList.remove('open');
-            if (clearBtnEl) clearBtnEl.style.display = 'none';
-        }
-    };
+    return { clear: () => {
+        inputEl.value = ''; filtered = [];
+        dropdownEl.classList.remove('open');
+        if (clearBtnEl) clearBtnEl.style.display = 'none';
+    }};
 }
+
+// ── WMO 天气码映射 ──────────────────────────────────────
+const WMO_TEXT = {
+    0:'☀️ 晴',1:'🌤️ 少云',2:'⛅ 多云',3:'☁️ 阴',
+    45:'🌫️ 雾',48:'🌫️ 冻雾',
+    51:'🌦️ 小雨',53:'🌧️ 中雨',55:'🌧️ 大雨',
+    61:'🌧️ 小雨',63:'🌧️ 中雨',65:'🌧️ 大雨',
+    66:'🌧️ 冻雨',67:'🌧️ 大冻雨',
+    71:'🌨️ 小雪',73:'🌨️ 中雪',75:'❄️ 大雪',
+    77:'🌨️ 雪粒',
+    80:'🌦️ 阵雨',81:'🌧️ 中阵雨',82:'⛈️ 大阵雨',
+    85:'🌨️ 小阵雪',86:'❄️ 大阵雪',
+    95:'⛈️ 雷暴',96:'⛈️ 雷暴+冰雹',99:'⛈️ 强雷暴+冰雹'
+};
 
 // ── 加载城市数据 ──────────────────────────────────────────
 function loadCity(name) {
     currentCity = name;
     const cityData = WEATHER_DATA[name];
-    if (!cityData) {
-        showToast('⚠️ 该城市暂无数据');
-        return;
-    }
+    if (!cityData) { showToast('⚠️ NO DATA FOR THIS CITY'); return; }
 
-    const d = cityData[yearKeys[2]]; // 当年数据
+    const d = cityData[yearKeys[2]];
     if (!d || !d.time || d.time.length === 0) {
-        showToast('⚠️ 该城市当年数据为空，请等待下次数据更新');
+        showToast('⚠️ NO CURRENT YEAR DATA — WAIT FOR NEXT UPDATE');
         return;
     }
 
-    // 更新 KPI
     const today = new Date().toISOString().split('T')[0];
     const idx = d.time.findIndex(t => t === today);
-
-    // 天气码 → 中文描述
-    const WMO_TEXT = {
-        0:'☀️ 晴',1:'🌤️ 少云',2:'⛅ 多云',3:'☁️ 阴',
-        45:'🌫️ 雾',48:'🌫️ 冻雾',
-        51:'🌦️ 小毛毛雨',53:'🌧️ 中毛毛雨',55:'🌧️ 大毛毛雨',
-        56:'🌧️ 冻毛毛雨',57:'🌧️ 大冻毛毛雨',
-        61:'🌧️ 小雨',63:'🌧️ 中雨',65:'🌧️ 大雨',
-        66:'🌧️ 冻雨',67:'🌧️ 大冻雨',
-        71:'🌨️ 小雪',73:'🌨️ 中雪',75:'❄️ 大雪',
-        77:'🌨️ 雪粒',
-        80:'🌦️ 小阵雨',81:'🌧️ 中阵雨',82:'⛈️ 大阵雨',
-        85:'🌨️ 小阵雪',86:'❄️ 大阵雪',
-        95:'⛈️ 雷暴',96:'⛈️ 雷暴+冰雹',99:'⛈️ 强雷暴+冰雹'
-    };
 
     if (idx >= 0) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
         const wc = d.wc ? d.wc[idx] : null;
-        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (WMO_TEXT[wc] || '未知') : '--';
+        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (WMO_TEXT[wc] || '?') : '--';
         const dress = d.dress ? d.dress[idx] : null;
         document.getElementById('k4').textContent = dress || '--';
+    } else {
+        ['k1','k2','k3','k4'].forEach(id => document.getElementById(id).textContent = id === 'k3' ? '--' : '--°');
     }
 
     renderCharts(cityData);
@@ -536,63 +722,65 @@ function loadCity(name) {
 
 // ── 渲染图表 ─────────────────────────────────────────────
 function fmtShort(d) {
-    const parts = d.split('-');
-    return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    const p = d.split('-');
+    return `${parseInt(p[1])}/${parseInt(p[2])}`;
 }
 
 function renderCharts(cityData) {
     const d = cityData[yearKeys[2]];
     const labels = d.time.map(fmtShort);
-
     const today = new Date().toISOString().split('T')[0];
     const todayIdx = d.time.findIndex(t => t === today);
 
     const todayAnnotation = {
         type: 'line', xMin: todayIdx, xMax: todayIdx,
-        borderColor: 'rgba(239,68,68,0.9)', borderWidth: 2, borderDash: [6, 4],
-        label: {
-            display: true, content: '今日', color: '#ef4444',
-            backgroundColor: 'rgba(255,255,255,0.85)',
-            font: { size: 11, weight: 'bold' }, position: 'start', yAdjust: -10
-        }
+        borderColor: 'rgba(248,113,113,0.8)', borderWidth: 2, borderDash: [6,4],
+        label: { display:true, content:'TODAY', color:'#f87171', backgroundColor:'rgba(5,8,16,0.85)', font:{size:11,weight:'bold'}, position:'start', yAdjust:-10 }
     };
 
     const chartOpts = () => ({
         responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: { mode:'index', intersect:false },
         plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyleWidth: 10, font: { size: 12 } } },
+            legend: {
+                position: 'bottom',
+                labels: { usePointStyle:true, pointStyleWidth:10, font:{size:12,color:'#94a3b8'}, color:'#94a3b8' },
+                title: { display: false }
+            },
             annotation: { annotations: { todayLine: todayAnnotation } },
             tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}°C` } }
         },
         scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45, color: '#94a3b8' } },
-            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v+'°C', font: { size: 11 }, color: '#94a3b8' } }
+            x: {
+                grid: { color: 'rgba(0,180,255,0.05)', drawBorder: false },
+                ticks: { font:{size:10,color:'rgba(100,116,139,0.7)'}, maxRotation:45 }
+            },
+            y: {
+                grid: { color: 'rgba(0,180,255,0.05)', drawBorder: false },
+                ticks: { callback: v=>v+'°C', font:{size:11,color:'rgba(100,116,139,0.7)'} }
+            }
         }
     });
 
-    const ds1 = [], ds2 = [];
-    const colors24 = ['#f87171', '#93c5fd'];
-    const colors25 = ['#34d399', '#6ee7b7'];
-    const colors26 = ['#6366f1', '#818cf8'];
+    const ds1=[], ds2=[];
+    const c24=['#f87171','#fb923c'], c25=['#34d399','#6ee7b7'], c26=['#38bdf8','#818cf8'];
 
     if (cityData[yearKeys[0]]) {
-        const d0 = cityData[yearKeys[0]];
-        ds1.push({ label:`${currentYear-2}`, data:d0.max, borderColor:colors24[0], tension:0.4, pointRadius:2, borderWidth:1.5, fill:false });
-        ds2.push({ label:`${currentYear-2}`, data:d0.min, borderColor:colors24[1], tension:0.4, pointRadius:2, borderWidth:1.5, fill:false });
+        const d0=cityData[yearKeys[0]];
+        ds1.push({label:`${currentYear-2}`,data:d0.max,borderColor:c24[0],tension:0.4,pointRadius:2,borderWidth:1.5,fill:false});
+        ds2.push({label:`${currentYear-2}`,data:d0.min,borderColor:c24[1],tension:0.4,pointRadius:2,borderWidth:1.5,fill:false});
     }
     if (cityData[yearKeys[1]]) {
-        const d1 = cityData[yearKeys[1]];
-        ds1.push({ label:`${currentYear-1}`, data:d1.max, borderColor:colors25[0], tension:0.4, pointRadius:2, borderWidth:1.5, fill:false });
-        ds2.push({ label:`${currentYear-1}`, data:d1.min, borderColor:colors25[1], tension:0.4, pointRadius:2, borderWidth:1.5, fill:false });
+        const d1=cityData[yearKeys[1]];
+        ds1.push({label:`${currentYear-1}`,data:d1.max,borderColor:c25[0],tension:0.4,pointRadius:2,borderWidth:1.5,fill:false});
+        ds2.push({label:`${currentYear-1}`,data:d1.min,borderColor:c25[1],tension:0.4,pointRadius:2,borderWidth:1.5,fill:false});
     }
-    ds1.push({ label:`${currentYear}`, data:d.max, borderColor:colors26[0], backgroundColor:'rgba(99,102,241,0.1)', tension:0.4, pointRadius:3, borderWidth:2.5, fill:false });
-    ds2.push({ label:`${currentYear}`, data:d.min, borderColor:colors26[1], backgroundColor:'rgba(99,102,241,0.1)', tension:0.4, pointRadius:3, borderWidth:2.5, fill:false });
+    ds1.push({label:`${currentYear}`,data:d.max,borderColor:c26[0],backgroundColor:'rgba(56,189,248,0.07)',tension:0.4,pointRadius:3,borderWidth:2.5,fill:false});
+    ds2.push({label:`${currentYear}`,data:d.min,borderColor:c26[1],backgroundColor:'rgba(129,140,248,0.07)',tension:0.4,pointRadius:3,borderWidth:2.5,fill:false});
 
-    if (ch1) ch1.destroy();
-    if (ch2) ch2.destroy();
-    ch1 = new Chart(document.getElementById('c1'), { type:'line', data:{ labels, datasets:ds1 }, options: chartOpts() });
-    ch2 = new Chart(document.getElementById('c2'), { type:'line', data:{ labels, datasets:ds2 }, options: chartOpts() });
+    if (ch1) ch1.destroy(); if (ch2) ch2.destroy();
+    ch1 = new Chart(document.getElementById('c1'), {type:'line',data:{labels,datasets:ds1},options:chartOpts()});
+    ch2 = new Chart(document.getElementById('c2'), {type:'line',data:{labels,datasets:ds2},options:chartOpts()});
 }
 
 // ── 渲染表格 ─────────────────────────────────────────────
@@ -600,28 +788,22 @@ function renderTable(cityData, today) {
     const d = cityData[yearKeys[2]];
     const tb = document.getElementById('tb');
     tb.innerHTML = '';
-
     d.time.forEach((t, i) => {
         const isToday = t === today;
         const isFuture = t > today;
+        const d0 = cityData[yearKeys[0]], d1 = cityData[yearKeys[1]];
+        const tag = isToday ? ' <span style="background:rgba(251,191,36,0.15);color:#fcd34d;padding:1px 7px;border-radius:10px;font-size:11px;border:1px solid rgba(251,191,36,0.3);">TODAY</span>'
+               : isFuture ? ' <span style="color:rgba(100,116,139,0.35);font-size:11px;">FCST</span>' : '';
         const tr = document.createElement('tr');
         tr.className = isToday ? 'today-row' : '';
-        tr.style.borderBottom = '1px solid #f1f5f9';
-
-        const tag = isToday ? ' <span style="background:#fbbf24;color:#92400e;padding:1px 6px;border-radius:10px;font-size:11px;">今天</span>'
-               : isFuture ? ' <span style="color:#94a3b8;font-size:11px;">预报</span>' : '';
-
-        const d0 = cityData[yearKeys[0]];
-        const d1 = cityData[yearKeys[1]];
-
         tr.innerHTML = `
-            <td class="p-3" style="font-weight:${isToday?700:400}">${fmtShort(t)}${tag}</td>
-            <td class="p-3 text-center" style="color:#f87171">${d0 && d0.max[i]!=null ? d0.max[i]+'°C' : '--'}</td>
-            <td class="p-3 text-center" style="color:#93c5fd">${d0 && d0.min[i]!=null ? d0.min[i]+'°C' : '--'}</td>
-            <td class="p-3 text-center" style="color:#34d399">${d1 && d1.max[i]!=null ? d1.max[i]+'°C' : '--'}</td>
-            <td class="p-3 text-center" style="color:#6ee7b7">${d1 && d1.min[i]!=null ? d1.min[i]+'°C' : '--'}</td>
-            <td class="p-3 text-center font-bold" style="color:#ef4444">${d.max[i] ?? '--'}°C</td>
-            <td class="p-3 text-center font-bold" style="color:#3b82f6">${d.min[i] ?? '--'}°C</td>`;
+            <td style="font-weight:${isToday?700:400}">${fmtShort(t)}${tag}</td>
+            <td class="text-center" style="color:${isToday?'#fcd34d':'#f87171'}">${d0&&d0.max[i]!=null?d0.max[i]+'°C':'--'}</td>
+            <td class="text-center" style="color:${isToday?'#fcd34d':'#93c5fd'}">${d0&&d0.min[i]!=null?d0.min[i]+'°C':'--'}</td>
+            <td class="text-center" style="color:${isToday?'#fcd34d':'#34d399'}">${d1&&d1.max[i]!=null?d1.max[i]+'°C':'--'}</td>
+            <td class="text-center" style="color:${isToday?'#fcd34d':'#6ee7b7'}">${d1&&d1.min[i]!=null?d1.min[i]+'°C':'--'}</td>
+            <td class="text-center font-bold" style="color:${isToday?'#fcd34d':'#f87171'}">${d.max[i]!=null?d.max[i]+'°C':'--'}</td>
+            <td class="text-center font-bold" style="color:${isToday?'#fcd34d':'#38bdf8'}">${d.min[i]!=null?d.min[i]+'°C':'--'}</td>`;
         tb.appendChild(tr);
     });
 }
@@ -634,7 +816,7 @@ function renderCmpTabs() {
     cmpCities.forEach((city, i) => {
         const tab = document.createElement('div');
         tab.className = 'cmp-tab';
-        tab.innerHTML = `${city}<span class="remove" onclick="removeCmpCity(${i}, event)">✕</span>`;
+        tab.innerHTML = `${city}<span class="remove" onclick="removeCmpCity(${i},event)">✕</span>`;
         container.insertBefore(tab, addBtn);
     });
     addBtn.disabled = cmpCities.length >= 5;
@@ -657,135 +839,104 @@ function closeCityPicker(e) {
 function renderPickerList(list) {
     const container = document.getElementById('pickerList');
     container.innerHTML = list.slice(0, 200).map(c =>
-        `<div class="city-picker-item" onclick="selectPickerCity('${c.name}')">
-            <span>${c.name}</span><span class="prov">${c.province}</span>
-        </div>`
+        `<div class="city-picker-item" onclick="selectPickerCity('${c.name}')"><span>${c.name}</span><span class="prov">${c.province}</span></div>`
     ).join('');
 }
 
 function filterPickerCities(q) {
-    const filtered = cityList.filter(c => c.name.includes(q) || c.province.includes(q));
-    renderPickerList(filtered);
+    renderPickerList(cityList.filter(c => c.name.includes(q) || c.province.includes(q)));
 }
 
 function selectPickerCity(name) {
-    if (cmpCities.includes(name)) { alert('该城市已在对比列表中'); return; }
-    if (cmpCities.length >= 5) { alert('最多只能对比5个城市'); return; }
+    if (cmpCities.includes(name)) { showToast('⚠️ CITY ALREADY ADDED'); return; }
+    if (cmpCities.length >= 5) { showToast('⚠️ MAX 5 CITIES'); return; }
     cmpCities.push(name);
     renderCmpTabs();
     closeCityPicker();
 }
 
-function removeCmpCity(i, e) {
-    e.stopPropagation();
-    cmpCities.splice(i, 1);
-    renderCmpTabs();
-}
+function removeCmpCity(i, e) { e.stopPropagation(); cmpCities.splice(i,1); renderCmpTabs(); }
 
 function runCompare() {
-    if (cmpCities.length < 2) { alert('请至少添加2个城市'); return; }
-
-    // 检查数据完整性
+    if (cmpCities.length < 2) { showToast('⚠️ ADD AT LEAST 2 CITIES'); return; }
     const missing = cmpCities.filter(n => !WEATHER_DATA[n] || !WEATHER_DATA[n][yearKeys[2]]);
-    if (missing.length > 0) {
-        alert(`以下城市暂无数据: ${missing.join(', ')}`);
-        return;
-    }
+    if (missing.length > 0) { showToast('⚠️ NO DATA: ' + missing.join(', ')); return; }
 
-    const colors = ['#6366f1','#f87171','#34d399','#fbbf24','#f472b6'];
-    const datasetsMax = [], datasetsMin = [];
-
+    const colors = ['#38bdf8','#f87171','#34d399','#fbbf24','#a78bfa'];
+    const datasetsMax=[], datasetsMin=[];
     cmpCities.forEach((name, i) => {
         const d = WEATHER_DATA[name][yearKeys[2]];
-        const color = colors[i % colors.length];
-        datasetsMax.push({ label:name, data:d.max, borderColor:color, backgroundColor:color+'18', tension:0.4, pointRadius:3, borderWidth:2.5, fill:false });
-        datasetsMin.push({ label:name, data:d.min, borderColor:color, backgroundColor:color+'18', tension:0.4, pointRadius:3, borderWidth:2.5, fill:false });
+        const c = colors[i % colors.length];
+        datasetsMax.push({label:name,data:d.max,borderColor:c,backgroundColor:c+'14',tension:0.4,pointRadius:3,borderWidth:2.5,fill:false});
+        datasetsMin.push({label:name,data:d.min,borderColor:c,backgroundColor:c+'14',tension:0.4,pointRadius:3,borderWidth:2.5,fill:false});
     });
 
     const refData = WEATHER_DATA[cmpCities[0]][yearKeys[2]];
     const today = new Date().toISOString().split('T')[0];
     const todayIdx = refData.time.findIndex(t => t === today);
-
     const todayAnnotation = {
-        type: 'line', xMin: todayIdx, xMax: todayIdx,
-        borderColor: 'rgba(239,68,68,0.9)', borderWidth: 2, borderDash: [6,4],
-        label: { display:true, content:'今日', color:'#ef4444', backgroundColor:'rgba(255,255,255,0.9)', font:{size:11,weight:'bold'}, position:'start' }
+        type:'line', xMin:todayIdx, xMax:todayIdx,
+        borderColor:'rgba(248,113,113,0.8)', borderWidth:2, borderDash:[6,4],
+        label:{display:true,content:'TODAY',color:'#f87171',backgroundColor:'rgba(5,8,16,0.85)',font:{size:11,weight:'bold'},position:'start'}
     };
-
     const chartOpts = () => ({
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
         plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 12 } } },
-            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}°C` } },
-            annotation: { annotations: { todayLine: todayAnnotation } }
+            legend:{position:'bottom',labels:{usePointStyle:true,font:{size:12},color:'#94a3b8'}},
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}°C`}},
+            annotation:{annotations:{todayLine:todayAnnotation}}
         },
         scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
-            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v+'°C', font: { size: 11 }, color: '#94a3b8' } }
+            x:{grid:{color:'rgba(0,180,255,0.05)',drawBorder:false},ticks:{font:{size:10,color:'rgba(100,116,139,0.7)'}}},
+            y:{grid:{color:'rgba(0,180,255,0.05)',drawBorder:false},ticks:{callback:v=>v+'°C',font:{size:11,color:'rgba(100,116,139,0.7)'}}}
         }
     });
 
-    const labels = refData.time.map(fmtShort);
-
     document.getElementById('cmpEmpty').style.display = 'none';
     document.getElementById('cmpChartsArea').style.display = 'block';
-
-    if (ch3) ch3.destroy();
-    if (ch4) ch4.destroy();
-    ch3 = new Chart(document.getElementById('c3'), { type:'line', data:{ labels, datasets:datasetsMax }, options: chartOpts() });
-    ch4 = new Chart(document.getElementById('c4'), { type:'line', data:{ labels, datasets:datasetsMin }, options: chartOpts() });
+    if (ch3) ch3.destroy(); if (ch4) ch4.destroy();
+    ch3 = new Chart(document.getElementById('c3'), {type:'line',data:{labels:refData.time.map(fmtShort),datasets:datasetsMax},options:chartOpts()});
+    ch4 = new Chart(document.getElementById('c4'), {type:'line',data:{labels:refData.time.map(fmtShort),datasets:datasetsMin},options:chartOpts()});
 }
 
 // ── 表格折叠 ─────────────────────────────────────────────
 function toggleTable() {
     tableCollapsed = !tableCollapsed;
-    const section = document.getElementById('tableSection');
-    document.getElementById('tableToggleIcon').textContent = tableCollapsed ? '👁️🗨️' : '👁️';
-    document.getElementById('tableToggleText').textContent = tableCollapsed ? '显示' : '隐藏';
-    section.style.display = tableCollapsed ? 'none' : 'block';
+    document.getElementById('tableSection').style.display = tableCollapsed ? 'none' : 'block';
+    document.getElementById('tableToggleText').textContent = tableCollapsed ? 'SHOW' : 'HIDE';
 }
 
 // ── 截图分享 ─────────────────────────────────────────────
 async function takeScreenshot() {
     const btn = document.querySelector('.btn-screenshot');
-    btn.textContent = '⏳ 截图中...';
-    btn.disabled = true;
-
+    btn.textContent = '⏳...'; btn.disabled = true;
     const wasCollapsed = tableCollapsed;
     if (!tableCollapsed) toggleTable();
-
     try {
         await new Promise(r => setTimeout(r, 300));
         const canvas = await html2canvas(document.getElementById('dashboard'), {
-            scale: 2, useCORS: true, backgroundColor: null, logging: false,
+            scale: 2, useCORS:true, backgroundColor:'#050810', logging:false,
             ignoreElements: el => el.id === 'cityPickerOverlay'
         });
-
         canvas.toBlob(async (blob) => {
             let saved = false;
             try {
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                showToast('📋 截图已复制到剪贴板！');
+                await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+                showToast('✓ COPIED TO CLIPBOARD');
                 saved = true;
             } catch(e) {}
             if (!saved) {
                 const url = canvas.toDataURL('image/png');
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `天气数据看板_${currentCity || '未选城市'}_${new Date().toLocaleDateString('zh-CN')}.png`;
+                a.download = `weather_hud_${currentCity||'nocity'}_${new Date().toLocaleDateString('en-US')}.png`;
                 a.click();
-                showToast('💾 截图已保存为图片！');
+                showToast('✓ SAVED AS IMAGE');
             }
-            if (!wasCollapsed) toggleTable();
         });
-    } catch(err) {
-        showToast('❌ 截图失败，请重试');
-        if (!wasCollapsed) toggleTable();
-    }
-
-    btn.innerHTML = '📸 截图';
-    btn.disabled = false;
+    } catch(err) { showToast('✗ FAILED — TRY AGAIN'); }
+    if (!wasCollapsed) toggleTable();
+    btn.innerHTML = '📸 CAPTURE'; btn.disabled = false;
 }
 
 function showToast(msg) {
