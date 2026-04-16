@@ -389,24 +389,24 @@
                 <circle cx="22" cy="22" r="2" fill="#38bdf8"/>
             </svg>
             <div>
-                <div class="hud-title">WEATHER · HUD</div>
+                <div class="hud-title">天气数据看板</div>
                 <div class="hud-sub flex items-center gap-3" style="margin-top:4px;">
-                    <span>TODAY ±14D · 3-YEAR COMPARE</span>
+                    <span>近14日 · 3年对比</span>
                     <span class="flex items-center gap-1.5" id="dataStatusBadge">
                         <span class="hud-dot" id="dataStatusDot"></span>
-                        <span id="dataStatusText" style="font-size:10px;">DATA READY</span>
+                        <span id="dataStatusText" style="font-size:10px;">数据就绪</span>
                     </span>
                 </div>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <div style="position:relative;" id="mainSearchWrap">
-                <input type="text" id="mainCityInput" class="city-input" placeholder="🔍 SEARCH CITY..." autocomplete="off" />
+                <input type="text" id="mainCityInput" class="city-input" placeholder="🔍 搜索城市..." autocomplete="off" />
                 <span class="city-clear-btn" id="mainCityClear" onclick="clearMainCity()">✕</span>
                 <div class="city-dropdown" id="mainCityDropdown"></div>
             </div>
-            <button class="btn-hud" onclick="reloadCity()">↺ REFRESH</button>
-            <button class="btn-screenshot" onclick="takeScreenshot()">📸 CAPTURE</button>
+            <button class="btn-hud" onclick="reloadCity()">↺ 刷新</button>
+            <button class="btn-screenshot" onclick="takeScreenshot()">📸 截图</button>
         </div>
     </div>
 
@@ -417,9 +417,9 @@
             <div class="glow-bar glow-bar-red mb-3"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <div class="kpi-label">MAX TEMP</div>
-                    <div class="kpi-value" id="k1">--°</div>
-                    <div class="kpi-en">High Temperature</div>
+                    <div class="kpi-label">最高气温</div>
+                    <div class="kpi-value" id="k1">--°C</div>
+                    <div class="kpi-en">℃</div>
                 </div>
                 <div class="kpi-icon" style="color:#f87171;">▲</div>
             </div>
@@ -429,9 +429,9 @@
             <div class="glow-bar glow-bar-blue mb-3"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <div class="kpi-label">MIN TEMP</div>
-                    <div class="kpi-value" id="k2">--°</div>
-                    <div class="kpi-en">Low Temperature</div>
+                    <div class="kpi-label">最低气温</div>
+                    <div class="kpi-value" id="k2">--°C</div>
+                    <div class="kpi-en">℃</div>
                 </div>
                 <div class="kpi-icon" style="color:#38bdf8;">▼</div>
             </div>
@@ -441,9 +441,9 @@
             <div class="glow-bar glow-bar-green mb-3"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <div class="kpi-label">CONDITION</div>
+                    <div class="kpi-label">天气状况</div>
                     <div class="kpi-value" id="k3" style="font-size:20px;">--</div>
-                    <div class="kpi-en">Weather Status</div>
+                    <div class="kpi-en">实时天气</div>
                 </div>
                 <div class="kpi-icon" style="color:#34d399;">◈</div>
             </div>
@@ -453,9 +453,9 @@
             <div class="glow-bar glow-bar-purple mb-3"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <div class="kpi-label">DRESSING</div>
+                    <div class="kpi-label">穿衣建议</div>
                     <div class="kpi-value" id="k4" style="font-size:18px;">--</div>
-                    <div class="kpi-en">Dressing Index</div>
+                    <div class="kpi-en">和风天气</div>
                 </div>
                 <div class="kpi-icon" style="color:#a78bfa;">✦</div>
             </div>
@@ -465,13 +465,13 @@
     <!-- ══ 温度折线图 ══════════════════════════════════ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
         <div class="glass-panel p-5">
-            <div class="chart-title">▲ MAX TEMP · 3-YEAR CURVE</div>
-            <div class="chart-sub mb-3">— Red dashed = Today</div>
+            <div class="chart-title">▲ 最高气温 · 3年曲线对比</div>
+            <div class="chart-sub mb-3">— 红色虚线 = 今日</div>
             <div style="height:260px"><canvas id="c1"></canvas></div>
         </div>
         <div class="glass-panel p-5">
-            <div class="chart-title">▼ MIN TEMP · 3-YEAR CURVE</div>
-            <div class="chart-sub mb-3">— Red dashed = Today</div>
+            <div class="chart-title">▼ 最低气温 · 3年曲线对比</div>
+            <div class="chart-sub mb-3">— 红色虚线 = 今日</div>
             <div style="height:260px"><canvas id="c2"></canvas></div>
         </div>
     </div>
@@ -480,13 +480,13 @@
     <div class="glass-panel p-5 mb-5">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-                <div class="chart-title">◈ MULTI-CITY COMPARE</div>
-                <div class="chart-sub">Max 5 cities · Same year</div>
+                <div class="chart-title">◈ 多城市对比</div>
+                <div class="chart-sub">最多5个城市 · 同年份对比</div>
             </div>
-            <button class="btn-primary" onclick="runCompare()">▶ RUN COMPARE</button>
+            <button class="btn-primary" onclick="runCompare()">▶ 开始对比</button>
         </div>
         <div class="cmp-tabs" id="cmpTabs">
-            <button class="cmp-add-btn" id="cmpAddBtn" onclick="openCityPicker()">＋ ADD CITY</button>
+            <button class="cmp-add-btn" id="cmpAddBtn" onclick="openCityPicker()">＋ 添加城市</button>
         </div>
         <div id="cmpChartsArea" style="display:none;">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -501,7 +501,7 @@
             </div>
         </div>
         <div id="cmpEmpty" style="text-align:center;padding:40px 0;color:rgba(100,116,139,0.4);font-size:13px;letter-spacing:1px;">
-            + ADD CITY TO START COMPARE
+            + 点击上方「添加城市」开始对比
         </div>
     </div>
 
@@ -509,11 +509,11 @@
     <div class="glass-panel p-5">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <div class="chart-title">▤ DETAILED DATA TABLE</div>
-                <div class="chart-sub">3-Year daily data · Current year highlighted</div>
+                <div class="chart-title">▤ 详细数据表</div>
+                <div class="chart-sub">3年历史数据 · 当年数据高亮</div>
             </div>
             <button class="collapse-btn" onclick="toggleTable()">
-                <span id="tableToggleIcon">◉</span><span id="tableToggleText">HIDE</span>
+                <span id="tableToggleIcon">◉</span><span id="tableToggleText">隐藏</span>
             </button>
         </div>
         <div id="tableSection">
@@ -521,13 +521,13 @@
                 <table class="w-full data-table" style="border-collapse:collapse;">
                     <thead>
                         <tr>
-                            <th class="text-left" style="border-radius:8px 0 0 8px;">DATE</th>
-                            <th class="text-center" id="th24a">-- HIGH</th>
-                            <th class="text-center" id="th24b">-- LOW</th>
-                            <th class="text-center" id="th25a">-- HIGH</th>
-                            <th class="text-center" id="th25b">-- LOW</th>
-                            <th class="text-center" style="color:#f87171;" id="th26a">-- HIGH</th>
-                            <th class="text-center" style="color:#38bdf8;border-radius:0 8px 8px 0;" id="th26b">-- LOW</th>
+                            <th class="text-left" style="border-radius:8px 0 0 8px;">日期</th>
+                            <th class="text-center" id="th24a">-- 高</th>
+                            <th class="text-center" id="th24b">-- 低</th>
+                            <th class="text-center" id="th25a">-- 高</th>
+                            <th class="text-center" id="th25b">-- 低</th>
+                            <th class="text-center" style="color:#f87171;" id="th26a">-- 高</th>
+                            <th class="text-center" style="color:#38bdf8;border-radius:0 8px 8px 0;" id="th26b">-- 低</th>
                         </tr>
                     </thead>
                     <tbody id="tb"></tbody>
@@ -542,11 +542,11 @@
 <div class="city-picker-overlay" id="cityPickerOverlay" onclick="closeCityPicker(event)">
     <div class="city-picker-modal" onclick="event.stopPropagation()">
         <div class="city-picker-header">
-            <span>SELECT CITY</span>
+            <span>选择城市</span>
             <button onclick="closeCityPicker()" style="background:none;border:none;font-size:18px;color:rgba(148,163,184,0.5);cursor:pointer;">✕</button>
         </div>
         <div class="city-picker-search">
-            <input type="text" id="pickerSearch" placeholder="Search city..." oninput="filterPickerCities(this.value)" />
+            <input type="text" id="pickerSearch" placeholder="搜索城市..." oninput="filterPickerCities(this.value)" />
         </div>
         <div class="city-picker-list" id="pickerList"></div>
     </div>
@@ -569,18 +569,18 @@ let yearKeys = [`${(currentYear-2)%100}`, `${(currentYear-1)%100}`, `${currentYe
 
 // ── 初始化 ──────────────────────────────────────────────
 (function init() {
-    document.getElementById('th24a').textContent = `${currentYear-2} HIGH`;
-    document.getElementById('th24b').textContent = `${currentYear-2} LOW`;
-    document.getElementById('th25a').textContent = `${currentYear-1} HIGH`;
-    document.getElementById('th25b').textContent = `${currentYear-1} LOW`;
-    document.getElementById('th26a').textContent = `${currentYear} HIGH`;
-    document.getElementById('th26b').textContent = `${currentYear} LOW`;
+    document.getElementById('th24a').textContent = `${currentYear-2} 最高`;
+    document.getElementById('th24b').textContent = `${currentYear-2} 最低`;
+    document.getElementById('th25a').textContent = `${currentYear-1} 最高`;
+    document.getElementById('th25b').textContent = `${currentYear-1} 最低`;
+    document.getElementById('th26a').textContent = `${currentYear} 最高`;
+    document.getElementById('th26b').textContent = `${currentYear} 最低`;
 
     if (typeof CITIES === 'undefined' || typeof WEATHER_DATA === 'undefined') {
         setDataStatus('err', '●', 'DATA LOAD FAILED');
         return;
     }
-    setDataStatus('ok', '●', `DATA: ${DATA_DATE || 'UNKNOWN'}`);
+    setDataStatus('ok', '●', `数据日期: ${DATA_DATE || '未知'}`);
     cityList = Object.keys(CITIES).map(name => ({ name, ...CITIES[name] }));
     initMainSearch();
     renderPickerList(cityList);
@@ -694,11 +694,11 @@ const WMO_TEXT = {
 function loadCity(name) {
     currentCity = name;
     const cityData = WEATHER_DATA[name];
-    if (!cityData) { showToast('⚠️ NO DATA FOR THIS CITY'); return; }
+    if (!cityData) { showToast('⚠️ 该城市暂无数据'); return; }
 
     const d = cityData[yearKeys[2]];
     if (!d || !d.time || d.time.length === 0) {
-        showToast('⚠️ NO CURRENT YEAR DATA — WAIT FOR NEXT UPDATE');
+        showToast('⚠️ 今年数据尚未更新，请等待下次采集');
         return;
     }
 
@@ -735,7 +735,7 @@ function renderCharts(cityData) {
     const todayAnnotation = {
         type: 'line', xMin: todayIdx, xMax: todayIdx,
         borderColor: 'rgba(248,113,113,0.8)', borderWidth: 2, borderDash: [6,4],
-        label: { display:true, content:'TODAY', color:'#f87171', backgroundColor:'rgba(5,8,16,0.85)', font:{size:11,weight:'bold'}, position:'start', yAdjust:-10 }
+        label: { display:true, content:'今日', color:'#f87171', backgroundColor:'rgba(5,8,16,0.85)', font:{size:11,weight:'bold'}, position:'start', yAdjust:-10 }
     };
 
     const chartOpts = () => ({
@@ -792,8 +792,8 @@ function renderTable(cityData, today) {
         const isToday = t === today;
         const isFuture = t > today;
         const d0 = cityData[yearKeys[0]], d1 = cityData[yearKeys[1]];
-        const tag = isToday ? ' <span style="background:rgba(251,191,36,0.15);color:#fcd34d;padding:1px 7px;border-radius:10px;font-size:11px;border:1px solid rgba(251,191,36,0.3);">TODAY</span>'
-               : isFuture ? ' <span style="color:rgba(100,116,139,0.35);font-size:11px;">FCST</span>' : '';
+        const tag = isToday ? ' <span style="background:rgba(251,191,36,0.15);color:#fcd34d;padding:1px 7px;border-radius:10px;font-size:11px;border:1px solid rgba(251,191,36,0.3);">今天</span>'
+               : isFuture ? ' <span style="color:rgba(100,116,139,0.35);font-size:11px;">预测</span>' : '';
         const tr = document.createElement('tr');
         tr.className = isToday ? 'today-row' : '';
         tr.innerHTML = `
@@ -848,8 +848,8 @@ function filterPickerCities(q) {
 }
 
 function selectPickerCity(name) {
-    if (cmpCities.includes(name)) { showToast('⚠️ CITY ALREADY ADDED'); return; }
-    if (cmpCities.length >= 5) { showToast('⚠️ MAX 5 CITIES'); return; }
+    if (cmpCities.includes(name)) { showToast('⚠️ 该城市已在列表中'); return; }
+    if (cmpCities.length >= 5) { showToast('⚠️ 最多只能添加5个城市'); return; }
     cmpCities.push(name);
     renderCmpTabs();
     closeCityPicker();
@@ -858,9 +858,9 @@ function selectPickerCity(name) {
 function removeCmpCity(i, e) { e.stopPropagation(); cmpCities.splice(i,1); renderCmpTabs(); }
 
 function runCompare() {
-    if (cmpCities.length < 2) { showToast('⚠️ ADD AT LEAST 2 CITIES'); return; }
+    if (cmpCities.length < 2) { showToast('⚠️ 请至少添加2个城市'); return; }
     const missing = cmpCities.filter(n => !WEATHER_DATA[n] || !WEATHER_DATA[n][yearKeys[2]]);
-    if (missing.length > 0) { showToast('⚠️ NO DATA: ' + missing.join(', ')); return; }
+    if (missing.length > 0) { showToast('⚠️ 缺少数据: ' + missing.join(', ')); return; }
 
     const colors = ['#38bdf8','#f87171','#34d399','#fbbf24','#a78bfa'];
     const datasetsMax=[], datasetsMin=[];
@@ -877,7 +877,7 @@ function runCompare() {
     const todayAnnotation = {
         type:'line', xMin:todayIdx, xMax:todayIdx,
         borderColor:'rgba(248,113,113,0.8)', borderWidth:2, borderDash:[6,4],
-        label:{display:true,content:'TODAY',color:'#f87171',backgroundColor:'rgba(5,8,16,0.85)',font:{size:11,weight:'bold'},position:'start'}
+        label:{display:true,content:'今日',color:'#f87171',backgroundColor:'rgba(5,8,16,0.85)',font:{size:11,weight:'bold'},position:'start'}
     };
     const chartOpts = () => ({
         responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
@@ -903,7 +903,7 @@ function runCompare() {
 function toggleTable() {
     tableCollapsed = !tableCollapsed;
     document.getElementById('tableSection').style.display = tableCollapsed ? 'none' : 'block';
-    document.getElementById('tableToggleText').textContent = tableCollapsed ? 'SHOW' : 'HIDE';
+    document.getElementById('tableToggleText').textContent = tableCollapsed ? '展开' : '隐藏';
 }
 
 // ── 截图分享 ─────────────────────────────────────────────
@@ -922,7 +922,7 @@ async function takeScreenshot() {
             let saved = false;
             try {
                 await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
-                showToast('✓ COPIED TO CLIPBOARD');
+                showToast('✓ 已复制到剪贴板');
                 saved = true;
             } catch(e) {}
             if (!saved) {
@@ -931,12 +931,12 @@ async function takeScreenshot() {
                 a.href = url;
                 a.download = `weather_hud_${currentCity||'nocity'}_${new Date().toLocaleDateString('en-US')}.png`;
                 a.click();
-                showToast('✓ SAVED AS IMAGE');
+                showToast('✓ 图片已保存');
             }
         });
-    } catch(err) { showToast('✗ FAILED — TRY AGAIN'); }
+    } catch(err) { showToast('✗ 截图失败，请重试'); }
     if (!wasCollapsed) toggleTable();
-    btn.innerHTML = '📸 CAPTURE'; btn.disabled = false;
+    btn.innerHTML = '📸 截图'; btn.disabled = false;
 }
 
 function showToast(msg) {
