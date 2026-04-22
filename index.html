@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="data.js"></script>
+    <script src="data.js" defer></script>
     <style>
         /* ── 底层：科技网格背景 ─────────────────────── */
         body {
@@ -587,7 +587,8 @@ let yearKeys = [`${(currentYear-2)%100}`, `${(currentYear-1)%100}`, `${currentYe
     cityList = Object.keys(CITIES).map(name => ({ name, ...CITIES[name] }));
     initMainSearch();
     renderPickerList(cityList);
-})();
+});
+window.addEventListener('DOMContentLoaded', () => { init(); });
 
 // ── 数据状态 ─────────────────────────────────────────────
 function setDataStatus(type, dot, text) {
@@ -603,9 +604,9 @@ function initMainSearch() {
     const drop = document.getElementById('mainCityDropdown');
     const clr = document.getElementById('mainCityClear');
     mainSearchCtrl = createCitySearch(inp, drop, (name) => {
-        // visible debug: write state to header title so user can see
+        // DEBUG: 更新状态栏显示选中的城市
         const yk = WEATHER_DATA[name] ? Object.keys(WEATHER_DATA[name]).sort().slice(-3) : [];
-        document.getElementById('headerTitle').textContent = '>>> ' + name + ' yearKeys=' + yk.join(',') + ' LOADING...';
+        document.getElementById('dataStatusText').textContent = '[select] ' + name + ' yr=' + yk.join(',') + ' LOADING...';
         loadCity(name);
     }, clr);
 }
@@ -706,12 +707,13 @@ function loadCity(name) {
     console.log('[loadCity]', name, 'yearKeys:', yearKeys, 'd26:', cityData && cityData['26'] ? 'exists' : cityData);
     if (!cityData) { showToast('⚠️ 该城市暂无数据'); return; }
 
-    document.getElementById('headerTitle').textContent = '>>> ' + name + ' data OK yr=' + yearKeys[2] + ' len=' + (d ? d.time.length : 'N/A');
     const d = cityData[yearKeys[2]];
     if (!d || !d.time || d.time.length === 0) {
         showToast('⚠️ 今年数据尚未更新，请等待下次采集');
         return;
     }
+    // DEBUG: 更新状态栏显示
+    document.getElementById('dataStatusText').textContent = '[loadCity] yr=' + yearKeys[2] + ' d.len=' + d.time.length;
 
     const today = new Date().toISOString().split('T')[0];
     const idx = d.time.findIndex(t => t === today);
@@ -720,11 +722,10 @@ function loadCity(name) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
         const wc = d.wc ? d.wc[idx] : null;
-        // DEBUG: visible output - user can see this directly on the page
-        const wmoStatus = window.WMO_TEXT_MAP ? (window.WMO_TEXT_MAP[wc] || '? NO_MAP_ENTRY(wc='+wc+')') : 'ERR_MAP_UNDEFINED';
-        const debugInfo = `[k3] wc=${wc} map=${window.WMO_TEXT_MAP ? 'OK' : 'MISSING'} result=${wmoStatus} idx=${idx} yearKeys2=${yearKeys[2]} dtime=${d ? d.time.length : 'N/A'} days`;
-        document.getElementById('headerTitle').textContent = debugInfo;
-        document.getElementById('k3').textContent = 'W' + wc + '=' + wmoStatus;
+        // k3: 天气状况（使用 WMO_TEXT_MAP 显示中文）
+        const wmoText = window.WMO_TEXT_MAP ? (window.WMO_TEXT_MAP[wc] || '--') : '--';
+        document.getElementById('dataStatusText').textContent = '[k3] wc=' + wc + ' → ' + wmoText;
+        document.getElementById('k3').textContent = (wc !== null && wc !== undefined && window.WMO_TEXT_MAP) ? window.WMO_TEXT_MAP[wc] : '--';
         const dress = d.dress ? d.dress[idx] : null;
         document.getElementById('k4').textContent = dress || '--';
     } else {

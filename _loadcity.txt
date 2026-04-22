@@ -1,0 +1,14 @@
+function loadCity(name) {
+    currentCity = name;
+    const cityData = WEATHER_DATA[name];
+    console.log('[loadCity]', name, 'yearKeys:', yearKeys, 'd26:', cityData && cityData['26'] ? 'exists' : cityData);
+    if (!cityData) { showToast('⚠️ 该城市暂无数据'); return; }
+
+    const d = cityData[yearKeys[2]];
+    if (!d || !d.time || d.time.length === 0) {
+        showToast('⚠️ 今年数据尚未更新，请等待下次采集');
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const idx = d.time.fin
