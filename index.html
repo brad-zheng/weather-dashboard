@@ -710,7 +710,8 @@ function loadCity(name) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
         const wc = d.wc ? d.wc[idx] : null;
-        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (WMO_TEXT_MAP[wc] || '?') : '--';
+        console.log('[DEBUG] wc:', wc, 'WMO_MAP:', window.WMO_TEXT_MAP, 'WMO_MAP[wc]:', window.WMO_TEXT_MAP ? window.WMO_TEXT_MAP[wc] : 'N/A');
+        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (window.WMO_TEXT_MAP[wc] || '?') : '--';
         const dress = d.dress ? d.dress[idx] : null;
         document.getElementById('k4').textContent = dress || '--';
     } else {
