@@ -602,7 +602,12 @@ function initMainSearch() {
     const inp = document.getElementById('mainCityInput');
     const drop = document.getElementById('mainCityDropdown');
     const clr = document.getElementById('mainCityClear');
-    mainSearchCtrl = createCitySearch(inp, drop, (name) => { loadCity(name); }, clr);
+    mainSearchCtrl = createCitySearch(inp, drop, (name) => {
+        // visible debug: write state to header title so user can see
+        const yk = WEATHER_DATA[name] ? Object.keys(WEATHER_DATA[name]).sort().slice(-3) : [];
+        document.getElementById('headerTitle').textContent = '>>> ' + name + ' yearKeys=' + yk.join(',') + ' LOADING...';
+        loadCity(name);
+    }, clr);
 }
 
 function clearMainCity() {
@@ -701,6 +706,7 @@ function loadCity(name) {
     console.log('[loadCity]', name, 'yearKeys:', yearKeys, 'd26:', cityData && cityData['26'] ? 'exists' : cityData);
     if (!cityData) { showToast('⚠️ 该城市暂无数据'); return; }
 
+    document.getElementById('headerTitle').textContent = '>>> ' + name + ' data OK yr=' + yearKeys[2] + ' len=' + (d ? d.time.length : 'N/A');
     const d = cityData[yearKeys[2]];
     if (!d || !d.time || d.time.length === 0) {
         showToast('⚠️ 今年数据尚未更新，请等待下次采集');
@@ -714,9 +720,11 @@ function loadCity(name) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
         const wc = d.wc ? d.wc[idx] : null;
-        document.getElementById('k3').textContent = (wc !== null && wc !== undefined) ? (window.WMO_TEXT_MAP[wc] || '?') : '--';
-        // DEBUG: 直接覆盖 k3 显示调试信息（上线后删除此行）
-        document.getElementById('k3').textContent = `W${wc}=${window.WMO_TEXT_MAP ? window.WMO_TEXT_MAP[wc] : 'ERR_MAP_UNDEF'}`;
+        // DEBUG: visible output - user can see this directly on the page
+        const wmoStatus = window.WMO_TEXT_MAP ? (window.WMO_TEXT_MAP[wc] || '? NO_MAP_ENTRY(wc='+wc+')') : 'ERR_MAP_UNDEFINED';
+        const debugInfo = `[k3] wc=${wc} map=${window.WMO_TEXT_MAP ? 'OK' : 'MISSING'} result=${wmoStatus} idx=${idx} yearKeys2=${yearKeys[2]} dtime=${d ? d.time.length : 'N/A'} days`;
+        document.getElementById('headerTitle').textContent = debugInfo;
+        document.getElementById('k3').textContent = 'W' + wc + '=' + wmoStatus;
         const dress = d.dress ? d.dress[idx] : null;
         document.getElementById('k4').textContent = dress || '--';
     } else {
