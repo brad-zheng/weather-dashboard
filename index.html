@@ -565,6 +565,60 @@
         </div>
     </div>
 
+    <!-- ══ 第八板块：气温数据表 ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-bottom:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#8068b0;box-shadow:0 0 5px rgba(128,104,176,0.5);"></span>
+                <div>
+                    <div class="panel-title">气温数据表 · 三年对比</div>
+                    <div class="panel-sub" id="tableSub">今天为中线 · 前后各15天 · --</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button class="hud-btn" onclick="exportTempTable()" style="background:rgba(60,100,140,0.12);border:1px solid rgba(60,100,140,0.2);color:rgba(120,150,180,0.7);padding:4px 14px;font-size:11px;border-radius:5px;cursor:pointer;">📥 导出Excel</button>
+                <button class="collapse-btn" onclick="toggleSection('tempTableBody','tableArrow','tableCollapseText')">
+                    <span id="tableArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                    <span id="tableCollapseText" style="white-space:nowrap;">收起</span>
+                </button>
+            </div>
+        </div>
+        <div id="tempTableWrapper" style="overflow-x:auto;margin-top:12px;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;">
+                <colgroup>
+                    <col style="width:90px;min-width:90px;">
+                    <col style="width:*;min-width:80px;">
+                    <col style="width:*;min-width:80px;">
+                    <col style="width:*;min-width:80px;">
+                    <col style="width:*;min-width:80px;">
+                    <col style="width:*;min-width:80px;">
+                    <col style="width:*;min-width:80px;">
+                </colgroup>
+                <thead>
+                    <tr id="tableHeadRow1" style="background:rgba(14,22,35,0.98);position:sticky;top:0;z-index:2;">
+                        <th style="padding:8px 10px;text-align:left;color:rgba(120,150,180,0.5);font-weight:600;letter-spacing:0.5px;font-size:10px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:3;border-bottom:1px solid rgba(60,100,140,0.08);">日期</th>
+                        <th style="padding:8px 10px;text-align:center;color:#4a90b8;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th26_1"></th>
+                        <th style="padding:8px 10px;text-align:center;color:#4a90b8;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th26_2"></th>
+                        <th style="padding:8px 10px;text-align:center;color:#3a9a62;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th25_1"></th>
+                        <th style="padding:8px 10px;text-align:center;color:#3a9a62;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th25_2"></th>
+                        <th style="padding:8px 10px;text-align:center;color:#a86858;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th24_1"></th>
+                        <th style="padding:8px 10px;text-align:center;color:#a86858;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);border-bottom:1px solid rgba(60,100,140,0.08);" id="th24_2"></th>
+                    </tr>
+                    <tr style="background:rgba(14,22,35,0.98);position:sticky;top:36px;z-index:2;">
+                        <th style="padding:6px 10px;text-align:left;color:rgba(120,150,180,0.5);font-weight:400;font-size:9px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:3;"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(74,144,184,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(74,144,184,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(58,154,98,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(58,154,98,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(168,104,88,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                        <th style="padding:6px 10px;text-align:center;color:rgba(168,104,88,0.6);font-weight:400;font-size:9px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);"></th>
+                    </tr>
+                </thead>
+                <tbody id="tempTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- ══ 城市选择对话框 ═══ -->
     <div class="city-dialog-overlay" id="cityDialogOverlay" onclick="CityCompare.closeDialog()">
         <div class="city-dialog-modal" onclick="event.stopPropagation()">
@@ -751,6 +805,9 @@ function toggleSection(bodyId, arrowId, textId) {
     // 初始化搜索框
     initMainSearch();
 
+    // 气温数据表缓存（必须在 loadCity 之前定义，供 Excel 导出使用）
+    var tableCache = { labels: [], data: {}, todayLocalIdx: 0 };
+
     // 默认加载第一个城市
     var firstCity = Object.keys(WEATHER_DATA)[0];
     loadCity(firstCity);
@@ -901,6 +958,7 @@ function loadCity(name) {
     renderMaxTempChart(cityData, today);
     renderMinTempChart(cityData, today);
     renderDiffTempChart(cityData, today);
+    renderTempTable(cityData, today);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1474,6 +1532,147 @@ var CityCompare = (function() {
 })();
 
 // ═══════════════════════════════════════════════════
+// 气温数据表
+// ═══════════════════════════════════════════════════
+function renderTempTable(cityData, today) {
+    try {
+        var d26 = cityData[yearKeys[2]];
+        var d25 = cityData[yearKeys[1]];
+        var d24 = cityData[yearKeys[0]];
+
+        if (!d26 || !d26.time) {
+            document.getElementById('tempTableBody').innerHTML = '<tr><td colspan="7" style="color:rgba(120,150,180,0.5);padding:20px;text-align:center;">数据加载中...</td></tr>';
+            return;
+        }
+
+        var todayIdx = d26.time.indexOf(today);
+        if (todayIdx < 0) todayIdx = d26.time.length - 1;
+        var startIdx = Math.max(0, todayIdx - 15);
+        var endIdx = Math.min(d26.time.length, todayIdx + 16);
+
+        var aligned25 = d25 ? alignRecord(d26, d25, startIdx, endIdx) : null;
+        var aligned24 = d24 ? alignRecord(d26, d24, startIdx, endIdx) : null;
+
+        document.getElementById('tableSub').textContent = '今天为中线 · 前后各15天 · ' + currentCity;
+
+        // 初始化表头
+        var currentYear = parseInt(DATA_DATE.substring(0, 4));
+        document.getElementById('th26_1').textContent = currentYear + ' 最高';
+        document.getElementById('th26_2').textContent = currentYear + ' 最低';
+        document.getElementById('th25_1').textContent = (currentYear - 1) + ' 最高';
+        document.getElementById('th25_2').textContent = (currentYear - 1) + ' 最低';
+        document.getElementById('th24_1').textContent = (currentYear - 2) + ' 最高';
+        document.getElementById('th24_2').textContent = (currentYear - 2) + ' 最低';
+
+        var tbody = document.getElementById('tempTableBody');
+        tbody.innerHTML = '';
+
+        // 缓存数据用于导出
+        tableCache.labels = [];
+        tableCache.data = { max26: [], min26: [], max25: [], min25: [], max24: [], min24: [] };
+        tableCache.todayLocalIdx = todayIdx - startIdx;
+
+        var weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+
+        for (var i = startIdx; i < endIdx; i++) {
+            var isToday = (i === todayIdx);
+            var localI = i - startIdx;
+            var tr = document.createElement('tr');
+            tr.style.cssText = 'border-bottom:1px solid rgba(60,100,140,0.04);transition:background 0.15s;';
+            if (isToday) tr.style.background = 'rgba(160,136,40,0.04)';
+            tr.onmouseover = function() { if (!this.style.background || !this.style.background.includes('160,136,40')) this.style.background = 'rgba(60,100,140,0.06)'; };
+            tr.onmouseout = function() { if (!this.id) this.style.background = ''; };
+
+            // 日期列
+            var td0 = document.createElement('td');
+            td0.style.cssText = 'padding:9px 10px;font-size:10px;white-space:nowrap;position:sticky;left:0;background:' + (isToday ? 'rgba(160,136,40,0.04)' : 'rgba(14,22,35,0.98)') + ';z-index:1;border-right:1px solid rgba(60,100,140,0.06);';
+            var d = new Date(d26.time[i] + 'T12:00:00');
+            td0.textContent = d26.time[i].substring(5).replace('-','/') + ' ' + weekdays[d.getDay()];
+            if (isToday) td0.innerHTML = '<span style="color:#c09830;font-weight:700;">' + td0.textContent + '</span>';
+            tr.appendChild(td0);
+
+            // 今年最高
+            var td1 = document.createElement('td');
+            td1.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#4a90b8;font-weight:600;border-left:1px solid rgba(60,100,140,0.08);';
+            td1.textContent = Math.round(d26.max[i]);
+            tr.appendChild(td1);
+
+            // 今年最低
+            var td2 = document.createElement('td');
+            td2.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#4a90b8;font-weight:600;border-left:1px solid rgba(60,100,140,0.08);';
+            td2.textContent = Math.round(d26.min[i]);
+            tr.appendChild(td2);
+
+            // 去年最高
+            var td3 = document.createElement('td');
+            td3.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#3a9a62;border-left:1px solid rgba(60,100,140,0.08);';
+            td3.textContent = aligned25 ? Math.round(aligned25.max[localI]) : '--';
+            tr.appendChild(td3);
+
+            // 去年最低
+            var td4 = document.createElement('td');
+            td4.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#3a9a62;border-left:1px solid rgba(60,100,140,0.08);';
+            td4.textContent = aligned25 ? Math.round(aligned25.min[localI]) : '--';
+            tr.appendChild(td4);
+
+            // 前年最高
+            var td5 = document.createElement('td');
+            td5.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#a86858;border-left:1px solid rgba(60,100,140,0.08);';
+            td5.textContent = aligned24 ? Math.round(aligned24.max[localI]) : '--';
+            tr.appendChild(td5);
+
+            // 前年最低
+            var td6 = document.createElement('td');
+            td6.style.cssText = 'padding:9px 8px;text-align:center;font-size:11px;color:#a86858;border-left:1px solid rgba(60,100,140,0.08);';
+            td6.textContent = aligned24 ? Math.round(aligned24.min[localI]) : '--';
+            tr.appendChild(td6);
+
+            tbody.appendChild(tr);
+
+            // 缓存
+            tableCache.labels.push(d26.time[i] + (isToday ? ' (今天)' : ''));
+            tableCache.data.max26.push(Math.round(d26.max[i]));
+            tableCache.data.min26.push(Math.round(d26.min[i]));
+            tableCache.data.max25.push(aligned25 ? Math.round(aligned25.max[localI]) : null);
+            tableCache.data.min25.push(aligned25 ? Math.round(aligned25.min[localI]) : null);
+            tableCache.data.max24.push(aligned24 ? Math.round(aligned24.max[localI]) : null);
+            tableCache.data.min24.push(aligned24 ? Math.round(aligned24.min[localI]) : null);
+        }
+    } catch(e) {
+        console.error('renderTempTable error:', e);
+    }
+}
+
+function exportTempTable() {
+    if (!tableCache || tableCache.labels.length === 0) {
+        showToast('⚠️ 暂无数据可导出');
+        return;
+    }
+    try {
+        var currentYear = parseInt(DATA_DATE.substring(0, 4));
+        var wb = XLSX.utils.book_new();
+        var wsData = [['日期', currentYear+'最高', currentYear+'最低', (currentYear-1)+'最高', (currentYear-1)+'最低', (currentYear-2)+'最高', (currentYear-2)+'最低']];
+        for (var i = 0; i < tableCache.labels.length; i++) {
+            wsData.push([
+                tableCache.labels[i],
+                tableCache.data.max26[i],
+                tableCache.data.min26[i],
+                tableCache.data.max25[i],
+                tableCache.data.min25[i],
+                tableCache.data.max24[i],
+                tableCache.data.min24[i]
+            ]);
+        }
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, currentCity);
+        XLSX.writeFile(wb, currentCity + '气温数据_' + DATA_DATE.substring(0,10) + '.xlsx');
+        showToast('✅ 导出成功');
+    } catch(e) {
+        showToast('✗ 导出失败：' + e.message);
+    }
+}
+
+// ═══════════════════════════════════════════════════
 // 截图分享
 // ═══════════════════════════════════════════════════
 async function takeScreenshot() {
@@ -1502,5 +1701,11 @@ async function takeScreenshot() {
     } catch(err) { showToast('✗ 截图失败，请重试'); }
 }
 </script>
+
+    <!-- 数据更新时间 -->
+    <div style="text-align:center;color:rgba(120,150,180,0.35);font-size:11px;padding:16px 0 20px;">
+        数据更新时间：<span id="dataUpdateTime"></span>
+    </div>
+    <script>document.getElementById('dataUpdateTime').textContent = DATA_DATE;</script>
 </body>
 </html>
