@@ -113,7 +113,20 @@
 
     /* 城市标签 */
     .city-grid {
-        display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+        transition: all 0.3s;
+        overflow: hidden;
+    }
+    .city-grid.collapsed {
+        max-height: 38px; /* 约一行高度 */
+    }
+    .city-grid.expanded {
+        max-height: 200px; /* 两行高度，足够显示 */
+    }
+    #cityArrow {
+        transform: rotate(0deg);
     }
     .city-tag {
         padding: 6px 0; text-align: center; border-radius: 5px;
@@ -367,8 +380,15 @@
                 </div>
             </div>
         </div>
-        <div class="city-grid" id="cityGrid">
-            <!-- 由 JS 渲染 -->
+        <!-- 城市标签栏 -->
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div class="city-grid" id="cityGrid" style="flex:1;">
+                <!-- 由 JS 渲染 -->
+            </div>
+            <button class="collapse-btn" id="cityCollapseBtn" onclick="toggleCityGrid()" title="折叠城市标签">
+                <span id="cityArrow" style="display:inline-flex;transition:transform 0.3s;">▲</span>
+                <span id="cityCollapseText" style="white-space:nowrap;">收起</span>
+            </button>
         </div>
     </div>
 
@@ -827,6 +847,23 @@ function renderCityGrid() {
         tag.onclick = function() { loadCity(name); };
         grid.appendChild(tag);
     });
+}
+
+function toggleCityGrid() {
+    var grid = document.getElementById('cityGrid');
+    var arrow = document.getElementById('cityArrow');
+    var text = document.getElementById('cityCollapseText');
+    if (grid.classList.contains('collapsed')) {
+        grid.classList.remove('collapsed');
+        grid.classList.add('expanded');
+        arrow.style.transform = '';
+        text.textContent = '收起';
+    } else {
+        grid.classList.remove('expanded');
+        grid.classList.add('collapsed');
+        arrow.style.transform = 'rotate(180deg)';
+        text.textContent = '展开';
+    }
 }
 
 // ═══════════════════════════════════════════════════
