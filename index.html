@@ -685,8 +685,7 @@ function createCitySearch(inputEl, dropdownEl, onSelect, clearBtnEl) {
 }
 
 // ── WMO 天气码映射 ──────────────────────────────────────
-// 挂到 window 确保全局可访问（解决 Tailwind Play CDN 语法转译问题）
-window.WMO_TEXT_MAP = {
+const WMO_TEXT_MAP = {
     0:'☀️ 晴',1:'🌤️ 少云',2:'⛅ 多云',3:'☁️ 阴',
     45:'🌫️ 雾',48:'🌫️ 冻雾',
     51:'🌦️ 小雨',53:'🌧️ 中雨',55:'🌧️ 大雨',
@@ -719,7 +718,7 @@ function loadCity(name) {
         document.getElementById('k1').textContent = d.max[idx] + '°C';
         document.getElementById('k2').textContent = d.min[idx] + '°C';
         const wc = d.wc ? d.wc[idx] : null;
-        const status = window.WMO_TEXT_MAP[wc] || '--';
+        const status = wc !== null && WMO_TEXT_MAP[wc] ? WMO_TEXT_MAP[wc] : '--';
         document.getElementById('k3').textContent = status;
         const dress = d.dress ? d.dress[idx] : null;
         document.getElementById('k4').textContent = dress || '--';
