@@ -120,7 +120,7 @@
         overflow: hidden;
     }
     .city-grid.collapsed {
-        max-height: 38px; /* 约一行高度 */
+        display: none;
     }
     .city-grid.expanded {
         max-height: 200px; /* 两行高度，足够显示 */
@@ -853,14 +853,12 @@ function toggleCityGrid() {
     var grid = document.getElementById('cityGrid');
     var arrow = document.getElementById('cityArrow');
     var text = document.getElementById('cityCollapseText');
-    if (grid.classList.contains('collapsed')) {
-        grid.classList.remove('collapsed');
-        grid.classList.add('expanded');
+    if (grid.style.display === 'none') {
+        grid.style.display = '';
         arrow.style.transform = '';
         text.textContent = '收起';
     } else {
-        grid.classList.remove('expanded');
-        grid.classList.add('collapsed');
+        grid.style.display = 'none';
         arrow.style.transform = 'rotate(180deg)';
         text.textContent = '展开';
     }
