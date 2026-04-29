@@ -588,52 +588,6 @@
         </div>
     </div>
 
-    <!-- ══ 第八板块：气温数据表 ═══ -->
-    <div class="hud-panel" style="padding:18px 24px;">
-        <div class="panel-header">
-            <div class="panel-header-left">
-                <span class="hud-dot" style="background:#8ab0d0;box-shadow:0 0 5px rgba(138,176,208,0.5);"></span>
-                <div>
-                    <div class="panel-title" style="display:flex;align-items:center;gap:10px;">
-                        <span>气温数据表</span>
-                        <button onclick="exportTempTable()" style="display:flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(40,80,120,0.15);border:1px solid rgba(60,100,140,0.2);border-radius:5px;color:rgba(120,150,180,0.6);font-size:10px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;" onmouseover="this.style.background='rgba(40,80,120,0.3)';this.style.color='#8ab0d0';" onmouseout="this.style.background='rgba(40,80,120,0.15)';this.style.color='rgba(120,150,180,0.6)';">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            导出 Excel
-                        </button>
-                    </div>
-                    <div class="panel-sub" id="tableSub">今天为中线 · 前后各15天</div>
-                </div>
-            </div>
-            <button class="collapse-btn" onclick="toggleSection('tableBody','tableArrow','tableText')">
-                <span id="tableArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
-                <span id="tableText" style="white-space:nowrap;">收起</span>
-            </button>
-        </div>
-        <div id="tableBody" style="transition:all 0.3s;">
-            <div style="overflow-x:auto;">
-                <table id="tempDataTable" style="width:100%;border-collapse:separate;border-spacing:0;font-size:11px;table-layout:fixed;">
-                    <colgroup>
-                        <col style="width:120px;">
-                        <col><col><col><col><col><col>
-                    </colgroup>
-                    <thead>
-                        <tr style="border-bottom:1px solid rgba(60,100,140,0.12);" id="tableHeadRow1"></tr>
-                        <tr style="border-bottom:1px solid rgba(60,100,140,0.15);">
-                            <th style="padding:6px 10px;text-align:left;color:rgba(120,150,180,0.35);font-weight:400;font-size:9px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:1;"></th>
-                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
-                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
-                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
-                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
-                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
-                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tempTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <!-- ══ Toast ═══ -->
@@ -797,13 +751,6 @@ function toggleSection(bodyId, arrowId, textId) {
     // 初始化搜索框
     initMainSearch();
 
-    // 初始化表头年份
-    var hr1 = document.getElementById('tableHeadRow1');
-    hr1.innerHTML = '<th style="padding:8px 10px;text-align:left;color:rgba(120,150,180,0.5);font-weight:600;letter-spacing:0.5px;font-size:10px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:1;">日期</th>'
-        + '<th colspan="2" style="padding:8px 10px;text-align:center;color:#4a90b8;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">' + currentYear + '</th>'
-        + '<th colspan="2" style="padding:8px 10px;text-align:center;color:#3a9a62;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">' + (currentYear-1) + '</th>'
-        + '<th colspan="2" style="padding:8px 10px;text-align:center;color:#a86858;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">' + (currentYear-2) + '</th>';
-
     // 默认加载第一个城市
     var firstCity = Object.keys(WEATHER_DATA)[0];
     loadCity(firstCity);
@@ -954,11 +901,7 @@ function loadCity(name) {
     renderMaxTempChart(cityData, today);
     renderMinTempChart(cityData, today);
     renderDiffTempChart(cityData, today);
-    renderTempTable(cityData, today);
 }
-
-// 气温数据表缓存（必须在函数外定义，Excel导出用）
-var tableCache = { labels: [], data: {} };
 
 // ═══════════════════════════════════════════════════
 // 天气日历（未来15天 · 三年对比）
@@ -1529,131 +1472,6 @@ var CityCompare = (function() {
         }
     };
 })();
-
-// ═══════════════════════════════════════════════════
-// 气温数据表（数据驱动版本）
-// ═══════════════════════════════════════════════════
-
-function renderTempTable(cityData, today) {
-    if (typeof tableCache === 'undefined') {
-        console.warn('tableCache not found, initializing...');
-        window.tableCache = { labels: [], data: {} };
-    }
-    console.log('tableCache:', typeof tableCache, tableCache);
-    console.log('renderTempTable called', { today: today, cityDataKeys: Object.keys(cityData), yearKeys: yearKeys });
-    var d26 = cityData[yearKeys[2]];
-    var d25 = cityData[yearKeys[1]];
-    var d24 = cityData[yearKeys[0]];
-    console.log('d26:', d26 ? 'exists' : 'MISSING', d26 ? 'time length: ' + d26.time.length : '');
-
-    if (!d26 || !d26.time) {
-        console.error('renderTempTable: d26 missing');
-        document.getElementById('tempTableBody').innerHTML = '<tr><td colspan="7" style="color:rgba(120,150,180,0.5);padding:20px;text-align:center;">数据加载中...</td></tr>';
-        return;
-    }
-
-    var todayIdx = d26.time.indexOf(today);
-    console.log('todayIdx:', todayIdx, 'today:', today);
-    if (todayIdx < 0) todayIdx = d26.time.length - 1;
-
-    var startIdx = Math.max(0, todayIdx - 15);
-    var endIdx = Math.min(d26.time.length, todayIdx + 16);
-    console.log('Rendering rows:', startIdx, 'to', endIdx, 'count:', endIdx - startIdx);
-
-    // 按月/日对齐 2025、2024 数据
-    var aligned25 = d25 ? alignRecord(d26, d25, startIdx, endIdx) : null;
-    var aligned24 = d24 ? alignRecord(d26, d24, startIdx, endIdx) : null;
-
-    document.getElementById('tableSub').textContent = '今天为中线 · 前后各15天 · ' + currentCity;
-
-    var tbody = document.getElementById('tempTableBody');
-    tbody.innerHTML = '';
-
-    var weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
-
-    // 缓存数据用于导出
-    tableCache.labels = [];
-    tableCache.data = { max26: [], min26: [], max25: [], min25: [], max24: [], min24: [] };
-    tableCache.todayLocalIdx = todayIdx - startIdx;
-
-    for (var i = startIdx; i < endIdx; i++) {
-        var isToday = (i === todayIdx);
-        var localI = i - startIdx; // 在对齐数组中的索引
-        var tr = document.createElement('tr');
-        tr.style.cssText = 'border-bottom:1px solid rgba(60,100,140,0.04);transition:background 0.15s;';
-        if (isToday) tr.style.background = 'rgba(160,136,40,0.04)';
-        tr.onmouseover = function() { this.style.background = 'rgba(30,50,70,0.2)'; };
-        tr.onmouseout = function() { this.style.background = this._isToday ? 'rgba(160,136,40,0.04)' : ''; };
-        tr._isToday = isToday;
-
-        var dateStr = fmtShort(d26.time[i]);
-        var wd = weekdays[new Date(d26.time[i]).getDay()];
-
-        var tdDate = document.createElement('td');
-        tdDate.style.cssText = 'padding:7px 10px;white-space:nowrap;position:sticky;left:0;background:inherit;z-index:1;';
-        if (isToday) {
-            tdDate.innerHTML = '<span style="color:#b09830;font-weight:700;">' + dateStr + '</span> <span style="font-size:8px;color:#b09830;opacity:0.6;">' + wd + '</span> <span style="font-size:7px;color:#b09830;opacity:0.5;background:rgba(160,136,40,0.12);padding:1px 4px;border-radius:3px;margin-left:2px;">TODAY</span>';
-        } else {
-            tdDate.innerHTML = '<span style="color:rgba(160,180,200,0.6);">' + dateStr + '</span> <span style="font-size:8px;color:rgba(120,150,180,0.3);">' + wd + '</span>';
-        }
-        tr.appendChild(tdDate);
-
-        // 使用对齐后的数据
-        var dataArrs = [
-            d26.max[i], d26.min[i],
-            aligned25 ? aligned25.max[localI] : null, aligned25 ? aligned25.min[localI] : null,
-            aligned24 ? aligned24.max[localI] : null, aligned24 ? aligned24.min[localI] : null
-        ];
-        var colors = ['#a86858', '#4a88a8', '#a86858', '#4a88a8', '#a86858', '#4a88a8'];
-
-        for (var j = 0; j < 6; j++) {
-            var td = document.createElement('td');
-            td.style.cssText = 'padding:7px 10px;text-align:center;';
-            td.innerHTML = '<span style="color:' + colors[j] + ';opacity:0.75;">' + (dataArrs[j] != null ? Math.round(dataArrs[j]) + '°' : '--') + '</span>';
-            if (j === 0 || j === 2 || j === 4) td.style.borderLeft = '1px solid rgba(60,100,140,0.06)';
-            if (j === 1 || j === 3 || j === 5) td.style.borderRight = '1px solid rgba(60,100,140,0.06)';
-            tr.appendChild(td);
-        }
-        tbody.appendChild(tr);
-
-        // 缓存
-        tableCache.labels.push(d26.time[i]);
-        tableCache.data.max26.push(d26.max[i]);
-        tableCache.data.min26.push(d26.min[i]);
-        tableCache.data.max25.push(aligned25 ? aligned25.max[localI] : null);
-        tableCache.data.min25.push(aligned25 ? aligned25.min[localI] : null);
-        tableCache.data.max24.push(aligned24 ? aligned24.max[localI] : null);
-        tableCache.data.min24.push(aligned24 ? aligned24.min[localI] : null);
-    }
-}
-
-// ═══════════════════════════════════════════════════
-// 导出 Excel
-// ═══════════════════════════════════════════════════
-function exportTempTable() {
-    if (tableCache.labels.length === 0) { showToast('⚠️ 暂无数据可导出'); return; }
-
-    var d = tableCache.data;
-    var today = new Date().toISOString().split('T')[0];
-    var wsData = [['日期', currentYear + '最高温', currentYear + '最低温', (currentYear-1) + '最高温', (currentYear-1) + '最低温', (currentYear-2) + '最高温', (currentYear-2) + '最低温']];
-    for (var i = 0; i < tableCache.labels.length; i++) {
-        wsData.push([
-            tableCache.labels[i] + (i === tableCache.todayLocalIdx ? ' (今天)' : ''),
-            d.max26[i] != null ? Math.round(d.max26[i]) : null,
-            d.min26[i] != null ? Math.round(d.min26[i]) : null,
-            d.max25[i] != null ? Math.round(d.max25[i]) : null,
-            d.min25[i] != null ? Math.round(d.min25[i]) : null,
-            d.max24[i] != null ? Math.round(d.max24[i]) : null,
-            d.min24[i] != null ? Math.round(d.min24[i]) : null
-        ]);
-    }
-
-    var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{wch:14},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, ws, '气温数据');
-    XLSX.writeFile(wb, (currentCity || '城市') + '气温数据_' + today + '.xlsx');
-}
 
 // ═══════════════════════════════════════════════════
 // 截图分享
