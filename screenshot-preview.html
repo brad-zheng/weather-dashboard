@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天气看板完整预览</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: #0c1018;
+        min-height: 100vh;
+        color: #a0b4cc;
+        overflow-x: hidden;
+    }
+
+    /* ── 深色渐变光晕背景（无网格） ─────────── */
+    body::before {
+        content: '';
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background:
+            radial-gradient(ellipse 80% 50% at 50% 10%, rgba(20,50,80,0.35) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 40% at 90% 85%, rgba(15,40,65,0.2) 0%, transparent 50%),
+            radial-gradient(ellipse 40% 30% at 10% 70%, rgba(10,30,50,0.15) 0%, transparent 50%);
+    }
+
+    #dashboard { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+    /* ── HUD 面板通用 ─────────────────────── */
+    .hud-panel {
+        background: rgba(14,22,35,0.92);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(60,100,140,0.15);
+        border-radius: 10px;
+        box-shadow:
+            0 0 1px rgba(80,140,200,0.2),
+            0 4px 24px rgba(0,0,0,0.5),
+            inset 0 1px 0 rgba(80,140,200,0.05);
+        position: relative;
+    }
+    .hud-panel::before {
+        content: '';
+        position: absolute; top: 0; left: 20px; right: 20px; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(60,120,170,0.2), transparent);
+    }
+
+    /* ── Header 面板 ──────────────────────── */
+    .header-panel {
+        padding: 18px 24px;
+        margin-bottom: 16px;
+    }
+    .header-top {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 14px; margin-bottom: 14px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .hud-title {
+        font-size: 18px; font-weight: 800;
+        letter-spacing: 3px; color: #8ab0d0;
+        text-shadow: 0 0 12px rgba(80,140,200,0.2);
+    }
+    .hud-sub {
+        font-size: 11px; color: rgba(120,150,180,0.5);
+        letter-spacing: 1px; margin-top: 3px;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .city-input {
+        width: 170px; padding: 7px 12px; border-radius: 6px;
+        border: 1px solid rgba(60,100,140,0.2);
+        background: rgba(0,0,0,0.3);
+        color: #a0b4cc; font-size: 13px; outline: none;
+        transition: border-color 0.2s;
+    }
+    .city-input:focus { border-color: rgba(60,120,170,0.4); }
+    .city-input::placeholder { color: rgba(120,150,180,0.35); }
+
+    /* 圆形按钮 */
+    .circle-btn {
+        width: 38px; height: 38px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all 0.25s; flex-shrink: 0;
+    }
+    .circle-btn-cyan {
+        background: rgba(40,100,150,0.12);
+        border: 1.5px solid rgba(60,130,180,0.35);
+        box-shadow: 0 0 8px rgba(40,100,150,0.15);
+        color: #5a9ec0;
+    }
+    .circle-btn-cyan:hover {
+        background: rgba(40,100,150,0.22);
+        border-color: rgba(60,130,180,0.55);
+        box-shadow: 0 0 14px rgba(40,100,150,0.3);
+        transform: scale(1.06);
+    }
+    .circle-btn-yellow {
+        background: rgba(150,120,40,0.1);
+        border: 1.5px solid rgba(170,140,50,0.3);
+        box-shadow: 0 0 8px rgba(150,120,40,0.1);
+        color: #b09830;
+    }
+    .circle-btn-yellow:hover {
+        background: rgba(150,120,40,0.2);
+        border-color: rgba(170,140,50,0.5);
+        box-shadow: 0 0 14px rgba(150,120,40,0.25);
+        transform: scale(1.06);
+    }
+
+    /* 城市标签 */
+    .city-grid {
+        display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+    }
+    .city-tag {
+        padding: 6px 0; text-align: center; border-radius: 5px;
+        background: rgba(30,50,70,0.3);
+        border: 1px solid rgba(60,100,140,0.1);
+        color: rgba(120,150,180,0.55); font-size: 12px; cursor: pointer;
+        transition: all 0.2s; letter-spacing: 2px;
+    }
+    .city-tag:hover {
+        background: rgba(35,60,85,0.4);
+        border-color: rgba(60,100,140,0.25);
+        color: #7aa0c0;
+    }
+    .city-tag.active {
+        background: rgba(40,80,120,0.25);
+        border-color: rgba(60,120,170,0.4);
+        color: #6aaad0;
+        box-shadow: 0 0 8px rgba(40,100,150,0.15);
+        font-weight: 600;
+    }
+
+    /* ── 板块标题栏 ──────────────────────── */
+    .panel-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 14px;
+    }
+    .panel-header-left { display: flex; align-items: center; gap: 10px; }
+    .hud-dot {
+        width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .hud-dot { animation: pulse-dot 2.5s ease-in-out infinite; }
+    .dot-green  { background: #3a8a5a; box-shadow: 0 0 5px rgba(58,138,90,0.5); }
+    .dot-amber  { background: #a08828; box-shadow: 0 0 5px rgba(160,136,40,0.5); }
+    .panel-title {
+        font-size: 13px; font-weight: 700;
+        color: #7aa0c0; letter-spacing: 1px;
+    }
+    .panel-sub {
+        font-size: 10px; color: rgba(120,150,180,0.45);
+        letter-spacing: 0.5px; margin-top: 2px;
+    }
+    .collapse-btn {
+        padding: 4px 10px; border-radius: 5px;
+        background: rgba(30,50,70,0.25);
+        border: 1px solid rgba(60,100,140,0.12);
+        color: rgba(120,150,180,0.5);
+        cursor: pointer; font-size: 11px;
+        display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+    }
+    .collapse-btn:hover { background: rgba(35,60,85,0.35); border-color: rgba(60,100,140,0.25); color: #7aa0c0; }
+
+    /* ── KPI 卡片 ────────────────────────── */
+    .kpi-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    .kpi-card {
+        background: rgba(12,20,32,0.6);
+        border: 1px solid rgba(60,100,140,0.08);
+        border-radius: 8px;
+        padding: 14px;
+        position: relative; overflow: hidden;
+        transition: all 0.25s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(60,100,140,0.2);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    }
+    .kpi-bar { height: 2px; border-radius: 1px; margin-bottom: 12px; }
+    .kpi-bar-red    { background: linear-gradient(90deg, rgba(180,70,60,0.7), rgba(200,80,65,0.5)); }
+    .kpi-bar-blue   { background: linear-gradient(90deg, rgba(50,110,160,0.7), rgba(60,130,180,0.5)); }
+    .kpi-bar-green  { background: linear-gradient(90deg, rgba(45,120,75,0.7), rgba(55,140,90,0.5)); }
+    .kpi-bar-purple { background: linear-gradient(90deg, rgba(100,70,140,0.7), rgba(120,85,160,0.5)); }
+    .kpi-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .kpi-label {
+        font-size: 9px; color: rgba(120,150,180,0.5);
+        letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .kpi-value { font-size: 26px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
+    .kpi-hint { font-size: 9px; color: rgba(120,150,180,0.35); margin-top: 5px; letter-spacing: 0.5px; }
+    .kpi-icon { font-size: 20px; opacity: 0.4; }
+    .kpi-red    .kpi-value { color: #b86050; }
+    .kpi-blue   .kpi-value { color: #4a90b8; }
+    .kpi-green  .kpi-value { color: #3a9a62; }
+    .kpi-purple .kpi-value { color: #8068b0; }
+    .kpi-red    .kpi-icon { color: #b86050; }
+    .kpi-blue   .kpi-icon { color: #4a90b8; }
+    .kpi-green  .kpi-icon { color: #3a9a62; }
+    .kpi-purple .kpi-icon { color: #8068b0; }
+
+    /* ── 天气日历 ────────────────────────── */
+    .weather-calendar { overflow-x: auto; }
+    .weather-calendar::-webkit-scrollbar { height: 3px; }
+    .weather-calendar::-webkit-scrollbar-thumb { background: rgba(60,100,140,0.15); border-radius: 3px; }
+    .wc-table {
+        width: 100%; min-width: 880px;
+        border-collapse: separate; border-spacing: 2px;
+        table-layout: fixed;
+    }
+    .wc-table th {
+        padding: 7px 0; text-align: center;
+        font-size: 11px; color: rgba(120,150,180,0.5);
+        letter-spacing: 0.5px; font-weight: 600;
+    }
+    .wc-table td { text-align: center; }
+    .wc-table th.today-col {
+        color: #b09830;
+        background: rgba(160,136,40,0.05);
+        border-radius: 5px 5px 0 0;
+        border-bottom: 1.5px solid rgba(160,136,40,0.25);
+    }
+    .wc-table th.future-col { color: rgba(80,120,150,0.45); }
+    .wc-row-year {
+        padding: 5px 8px; font-size: 11px; font-weight: 700;
+        white-space: nowrap; text-align: center; vertical-align: middle;
+        letter-spacing: 0.5px;
+    }
+    .wc-cell {
+        padding: 7px 2px; text-align: center; vertical-align: middle;
+        border-radius: 5px; transition: all 0.2s;
+        background: rgba(10,18,30,0.5);
+        border: 1px solid rgba(60,100,140,0.05);
+    }
+    .wc-cell:hover { border-color: rgba(60,100,140,0.15); background: rgba(14,25,40,0.6); }
+    .wc-cell.today-cell {
+        background: rgba(160,136,40,0.04);
+        border: 1px solid rgba(160,136,40,0.18);
+        box-shadow: 0 0 8px rgba(160,136,40,0.05);
+    }
+    .wc-cell.future-cell { border-style: dashed; border-color: rgba(60,100,140,0.05); }
+    .wc-emoji { font-size: 18px; line-height: 1.2; }
+    .wc-text { font-size: 9px; color: rgba(120,150,180,0.45); margin-top: 1px; }
+    .wc-temp { font-size: 10px; font-weight: 700; margin-top: 3px; display: flex; justify-content: center; gap: 4px; }
+    .wc-temp-high { color: #a86858; }
+    .wc-temp-low { color: #4a88a8; }
+    .wc-y24 { color: #a86858; background: rgba(160,80,60,0.05); border-radius: 5px; }
+    .wc-y25 { color: #3a9a62; background: rgba(45,120,75,0.05); border-radius: 5px; }
+    .wc-y26 { color: #4a90b8; background: rgba(50,100,140,0.06); border-radius: 5px; border: 1px solid rgba(60,120,170,0.15); }
+
+    /* 天气结论条 */
+    .forecast-summary {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        padding: 7px 12px; margin-bottom: 12px;
+        background: rgba(16,28,45,0.5);
+        border: 1px solid rgba(60,100,140,0.06);
+        border-radius: 6px;
+        font-size: 11px; color: rgba(120,150,180,0.5);
+    }
+    .fs-item { display: flex; align-items: center; gap: 4px; }
+    .fs-item .fs-emoji { font-size: 13px; }
+    .fs-item .fs-val { font-weight: 700; color: #8ab0d0; }
+    .fs-meta { margin-left: auto; color: rgba(90,120,150,0.35); font-size: 10px; }
+
+    /* ── 滚动条 ──────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(60,100,140,0.12); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="dashboard">
+
+    <!-- ══ 第一板块：Header ════════════════════════ -->
+    <div class="hud-panel header-panel">
+        <div class="header-top">
+            <div class="header-left">
+                <svg width="40" height="40" viewBox="0 0 44 44" fill="none">
+                    <circle cx="22" cy="22" r="20" stroke="rgba(70,120,170,0.2)" stroke-width="1"/>
+                    <circle cx="22" cy="22" r="13" stroke="rgba(70,120,170,0.12)" stroke-width="1"/>
+                    <circle cx="22" cy="22" r="6" stroke="rgba(70,120,170,0.25)" stroke-width="1"/>
+                    <line x1="22" y1="22" x2="38" y2="10" stroke="#5a9ec0" stroke-width="1.2" stroke-linecap="round">
+                        <animateTransform attributeName="transform" type="rotate" from="0 22 22" to="360 22 22" dur="4s" repeatCount="indefinite"/>
+                    </line>
+                    <circle cx="22" cy="22" r="2" fill="#5a9ec0"/>
+                </svg>
+                <div>
+                    <div class="hud-title">天气数据看板</div>
+                    <div class="hud-sub">数据更新：2026-04-29 03:00</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <input class="city-input" type="text" value="北京" />
+                <div class="circle-btn circle-btn-cyan" title="刷新数据">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </div>
+                <div class="circle-btn circle-btn-yellow" title="导出截图">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </div>
+            </div>
+        </div>
+        <div class="city-grid">
+            <div class="city-tag active">北京</div>
+            <div class="city-tag">上海</div>
+            <div class="city-tag">广州</div>
+            <div class="city-tag">深圳</div>
+            <div class="city-tag">沈阳</div>
+            <div class="city-tag">哈尔滨</div>
+            <div class="city-tag">郑州</div>
+            <div class="city-tag">青岛</div>
+            <div class="city-tag">杭州</div>
+            <div class="city-tag">西安</div>
+            <div class="city-tag">成都</div>
+            <div class="city-tag">武汉</div>
+        </div>
+    </div>
+
+    <!-- ══ 第二板块：今日天气概况（独立面板） ═══════ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-bottom:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot dot-green"></span>
+                <div>
+                    <div class="panel-title">今日天气概况 · <span style="color:#6aaad0;">北京</span></div>
+                    <div class="panel-sub">2026-04-29 周三</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('kpiBody','kpiArrow','kpiText')">
+                <span id="kpiArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="kpiText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="kpiBody" style="transition:all 0.3s;">
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-red">
+                    <div class="kpi-bar kpi-bar-red"></div>
+                    <div class="kpi-card-top">
+                        <div>
+                            <div class="kpi-label">最高气温</div>
+                            <div class="kpi-value">25°C</div>
+                            <div class="kpi-hint">较昨日 <span style="color:#3a9a62;">+2°</span></div>
+                        </div>
+                        <div class="kpi-icon">▲</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-bar kpi-bar-blue"></div>
+                    <div class="kpi-card-top">
+                        <div>
+                            <div class="kpi-label">最低气温</div>
+                            <div class="kpi-value">11°C</div>
+                            <div class="kpi-hint">较昨日 <span style="color:#a86858;">-1°</span></div>
+                        </div>
+                        <div class="kpi-icon">▼</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-bar kpi-bar-green"></div>
+                    <div class="kpi-card-top">
+                        <div>
+                            <div class="kpi-label">天气状况</div>
+                            <div class="kpi-value" style="font-size:17px;">☀️ 晴</div>
+                            <div class="kpi-hint">实时天气</div>
+                        </div>
+                        <div class="kpi-icon">◈</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-purple">
+                    <div class="kpi-bar kpi-bar-purple"></div>
+                    <div class="kpi-card-top">
+                        <div>
+                            <div class="kpi-label">穿衣建议</div>
+                            <div class="kpi-value" style="font-size:15px;">薄外套</div>
+                            <div class="kpi-hint">和风天气</div>
+                        </div>
+                        <div class="kpi-icon">✦</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第三板块：未来15天天气状况（独立面板） ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot dot-amber"></span>
+                <div>
+                    <div class="panel-title">未来天气概况 · 三年对比</div>
+                    <div class="panel-sub">
+                        <span class="forecast-summary" style="display:inline-flex;padding:2px 8px;margin:0;border:none;background:none;">
+                            <span class="fs-item"><span class="fs-emoji">☀️</span>晴好<span class="fs-val">12天</span></span>
+                            <span class="fs-item"><span class="fs-emoji">🌧️</span>有雨<span class="fs-val">3天</span></span>
+                            <span class="fs-item"><span class="fs-emoji">☁️</span>阴天<span class="fs-val">1天</span></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('fcBody','fcArrow','fcText')">
+                <span id="fcArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="fcText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="fcBody" style="transition:all 0.3s;">
+            <!-- 天气结论条 -->
+            <div class="forecast-summary">
+                <div class="fs-item"><span class="fs-emoji">☀️</span><span>晴好</span><span class="fs-val">12天</span></div>
+                <div class="fs-item"><span class="fs-emoji">🌧️</span><span>有雨</span><span class="fs-val">3天</span></div>
+                <div class="fs-item"><span class="fs-emoji">☁️</span><span>阴天</span><span class="fs-val">1天</span></div>
+                <span class="fs-meta">2026年 · 北京</span>
+            </div>
+            <!-- 日历表格 -->
+            <div class="weather-calendar">
+                <table class="wc-table">
+                    <thead><tr><th style="width:50px;"></th>
+                        <th class="today-col"><div style="font-size:8px;color:#b09830;margin-bottom:1px;">TODAY</div>4/29<div style="font-size:8px;opacity:0.4;margin-top:1px;">周三</div></th>
+                        <th class="future-col">4/30<div style="font-size:8px;opacity:0.4;margin-top:1px;">周四</div></th>
+                        <th class="future-col">5/1<div style="font-size:8px;opacity:0.4;margin-top:1px;">周五</div></th>
+                        <th class="future-col">5/2<div style="font-size:8px;opacity:0.4;margin-top:1px;">周六</div></th>
+                        <th class="future-col">5/3<div style="font-size:8px;opacity:0.4;margin-top:1px;">周日</div></th>
+                        <th class="future-col">5/4<div style="font-size:8px;opacity:0.4;margin-top:1px;">周一</div></th>
+                        <th class="future-col">5/5<div style="font-size:8px;opacity:0.4;margin-top:1px;">周二</div></th>
+                        <th class="future-col">5/6<div style="font-size:8px;opacity:0.4;margin-top:1px;">周三</div></th>
+                        <th class="future-col">5/7<div style="font-size:8px;opacity:0.4;margin-top:1px;">周四</div></th>
+                        <th class="future-col">5/8<div style="font-size:8px;opacity:0.4;margin-top:1px;">周五</div></th>
+                        <th class="future-col">5/9<div style="font-size:8px;opacity:0.4;margin-top:1px;">周六</div></th>
+                        <th class="future-col">5/10<div style="font-size:8px;opacity:0.4;margin-top:1px;">周日</div></th>
+                        <th class="future-col">5/11<div style="font-size:8px;opacity:0.4;margin-top:1px;">周一</div></th>
+                        <th class="future-col">5/12<div style="font-size:8px;opacity:0.4;margin-top:1px;">周二</div></th>
+                        <th class="future-col">5/13<div style="font-size:8px;opacity:0.4;margin-top:1px;">周三</div></th>
+                        <th class="future-col">5/14<div style="font-size:8px;opacity:0.4;margin-top:1px;">周四</div></th>
+                    </tr></thead>
+                    <tbody>
+                    <!-- 2026（今天+未来15天，共16格） -->
+                    <tr><td class="wc-row-year wc-y26">2026</td>
+                        <td class="wc-cell today-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">25°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">23°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">28°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">29°</span><span class="wc-temp-low">15°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">小雨</div><div class="wc-temp"><span class="wc-temp-high">19°</span><span class="wc-temp-low">10°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">中雨</div><div class="wc-temp"><span class="wc-temp-high">17°</span><span class="wc-temp-low">9°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☁️</div><div class="wc-text">阴</div><div class="wc-temp"><span class="wc-temp-high">18°</span><span class="wc-temp-low">10°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">22°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">25°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">27°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">阵雨</div><div class="wc-temp"><span class="wc-temp-high">20°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">24°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell future-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">28°</span><span class="wc-temp-low">14°</span></div></td>
+                    </tr>
+                    <!-- 2025（16格） -->
+                    <tr><td class="wc-row-year wc-y25">2025</td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">24°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">27°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">29°</span><span class="wc-temp-low">15°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">28°</span><span class="wc-temp-low">16°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">15°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">小雨</div><div class="wc-temp"><span class="wc-temp-high">20°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">中雨</div><div class="wc-temp"><span class="wc-temp-high">18°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☁️</div><div class="wc-text">阴</div><div class="wc-temp"><span class="wc-temp-high">19°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">23°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">28°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">30°</span><span class="wc-temp-low">15°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">27°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">阵雨</div><div class="wc-temp"><span class="wc-temp-high">21°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">25°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">27°</span><span class="wc-temp-low">14°</span></div></td>
+                    </tr>
+                    <!-- 2024（16格） -->
+                    <tr><td class="wc-row-year wc-y24">2024</td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">24°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">22°</span><span class="wc-temp-low">10°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">小雨</div><div class="wc-temp"><span class="wc-temp-high">18°</span><span class="wc-temp-low">9°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">中雨</div><div class="wc-temp"><span class="wc-temp-high">16°</span><span class="wc-temp-low">8°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☁️</div><div class="wc-text">阴</div><div class="wc-temp"><span class="wc-temp-high">17°</span><span class="wc-temp-low">9°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">21°</span><span class="wc-temp-low">10°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">25°</span><span class="wc-temp-low">12°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">27°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌧️</div><div class="wc-text">阵雨</div><div class="wc-temp"><span class="wc-temp-high">22°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☁️</div><div class="wc-text">阴</div><div class="wc-temp"><span class="wc-temp-high">20°</span><span class="wc-temp-low">10°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">24°</span><span class="wc-temp-low">11°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">☀️</div><div class="wc-text">晴</div><div class="wc-temp"><span class="wc-temp-high">28°</span><span class="wc-temp-low">14°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">🌤️</div><div class="wc-text">多云</div><div class="wc-temp"><span class="wc-temp-high">26°</span><span class="wc-temp-low">13°</span></div></td>
+                        <td class="wc-cell"><div class="wc-emoji">⛅</div><div class="wc-text">晴间多云</div><div class="wc-temp"><span class="wc-temp-high">25°</span><span class="wc-temp-low">12°</span></div></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第四板块：最高气温对比 · 三年（±15天） ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-top:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#a86858;box-shadow:0 0 5px rgba(168,104,88,0.5);"></span>
+                <div>
+                    <div class="panel-title">最高气温对比 · 三年</div>
+                    <div class="panel-sub">今天为中线 · 前后各15天</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('chartBody','chartArrow','chartText')">
+                <span id="chartArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="chartText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="chartBody" style="transition:all 0.3s;">
+            <div style="height:260px;position:relative;">
+                <canvas id="maxTempChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第五板块：最低气温对比 · 三年（±15天） ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-top:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#4a88a8;box-shadow:0 0 5px rgba(74,136,168,0.5);"></span>
+                <div>
+                    <div class="panel-title">最低气温对比 · 三年</div>
+                    <div class="panel-sub">今天为中线 · 前后各15天</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('minChartBody','minChartArrow','minChartText')">
+                <span id="minChartArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="minChartText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="minChartBody" style="transition:all 0.3s;">
+            <div style="height:260px;position:relative;">
+                <canvas id="minTempChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第六板块：温差对比 · 三年（±15天） ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-top:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#8068b0;box-shadow:0 0 5px rgba(128,104,176,0.5);"></span>
+                <div>
+                    <div class="panel-title">温差对比 · 三年</div>
+                    <div class="panel-sub">温差 = 最高气温 − 最低气温 · 今天为中线</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('diffChartBody','diffChartArrow','diffChartText')">
+                <span id="diffChartArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="diffChartText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="diffChartBody" style="transition:all 0.3s;">
+            <div style="height:260px;position:relative;">
+                <canvas id="diffTempChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第七板块：多城市对比 ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-top:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#5a9ec0;box-shadow:0 0 5px rgba(90,158,192,0.5);"></span>
+                <div>
+                    <div class="panel-title">多城市对比</div>
+                    <div class="panel-sub" id="cityPanelSub">最多3个城市 · 同年份对比</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('cityChartBody','cityChartArrow','cityChartText')">
+                <span id="cityChartArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="cityChartText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="cityChartBody" style="transition:all 0.3s;">
+            <!-- 城市标签栏 -->
+            <div id="cityTagBar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <!-- 添加城市按钮 -->
+                <div id="addCityBtn" onclick="CityCompare.openDialog()" style="display:flex;align-items:center;gap:4px;padding:5px 12px;background:rgba(60,100,140,0.1);border:1px dashed rgba(60,100,140,0.25);border-radius:16px;font-size:12px;color:rgba(120,150,180,0.5);cursor:pointer;transition:all 0.2s;">
+                    <span style="font-size:14px;line-height:1;">+</span><span>添加城市</span>
+                </div>
+            </div>
+            <!-- 空状态提示 -->
+            <div id="cityEmptyState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0;color:rgba(120,150,180,0.3);">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4;margin-bottom:10px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <div style="font-size:13px;letter-spacing:1px;">点击上方按钮添加城市</div>
+                <div style="font-size:10px;margin-top:4px;opacity:0.6;">最多同时对比 3 个城市</div>
+            </div>
+            <!-- 图表区域（初始隐藏） -->
+            <div id="cityChartArea" style="display:none;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                    <!-- 最高温 -->
+                    <div>
+                        <div style="font-size:10px;color:#c87864;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+                            <span style="font-size:8px;">▲</span>MAX TEMP
+                        </div>
+                        <div style="height:200px;position:relative;">
+                            <canvas id="cityMaxTempChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- 最低温 -->
+                    <div>
+                        <div style="font-size:10px;color:#4a90b8;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+                            <span style="font-size:8px;">▼</span>MIN TEMP
+                        </div>
+                        <div style="height:200px;position:relative;">
+                            <canvas id="cityMinTempChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <!-- 图例 -->
+                <div id="cityLegend" style="display:flex;justify-content:center;gap:24px;margin-top:12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 城市选择对话框 ═══ -->
+    <div id="cityDialogOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;" onclick="CityCompare.closeDialog()">
+        <div id="cityDialog" style="width:420px;max-height:460px;background:rgba(14,22,35,0.98);border:1px solid rgba(60,100,140,0.2);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);overflow:hidden;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+            <!-- 对话框标题 -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(60,100,140,0.1);">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a9ec0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span style="font-size:13px;font-weight:700;color:#7aa0c0;letter-spacing:1px;">选择城市</span>
+                </div>
+                <div onclick="CityCompare.closeDialog()" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;color:rgba(120,150,180,0.4);font-size:16px;transition:all 0.15s;background:rgba(30,50,70,0.2);" onmouseover="this.style.background='rgba(30,50,70,0.4)';this.style.color='#8ab0d0';" onmouseout="this.style.background='rgba(30,50,70,0.2)';this.style.color='rgba(120,150,180,0.4)';">×</div>
+            </div>
+            <!-- 搜索框 -->
+            <div style="padding:12px 20px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(60,100,140,0.15);border-radius:8px;transition:border-color 0.2s;" id="citySearchBox">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(120,150,180,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input id="citySearchInput" type="text" placeholder="搜索城市名称..." oninput="CityCompare.filterCities(this.value)" onfocus="document.getElementById('citySearchBox').style.borderColor='rgba(60,120,170,0.4)'" onblur="document.getElementById('citySearchBox').style.borderColor='rgba(60,100,140,0.15)'" style="flex:1;background:none;border:none;outline:none;color:#a0b4cc;font-size:13px;" />
+                </div>
+            </div>
+            <!-- 已添加提示 -->
+            <div id="cityDialogActiveHint" style="display:none;padding:0 20px 8px;font-size:10px;color:rgba(120,150,180,0.35);letter-spacing:0.5px;">
+                已选择：<span id="cityDialogActiveList"></span>
+            </div>
+            <!-- 快捷城市列表 -->
+            <div style="flex:1;overflow-y:auto;padding:0 20px 16px;" id="cityDialogList">
+                <!-- 由 JS 渲染 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ 第八板块：气温数据表 ═══ -->
+    <div class="hud-panel" style="padding:18px 24px;margin-top:16px;">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="hud-dot" style="background:#8ab0d0;box-shadow:0 0 5px rgba(138,176,208,0.5);"></span>
+                <div>
+                    <div class="panel-title" style="display:flex;align-items:center;gap:10px;">
+                        <span>气温数据表</span>
+                        <button onclick="exportTempTable()" style="display:flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(40,80,120,0.15);border:1px solid rgba(60,100,140,0.2);border-radius:5px;color:rgba(120,150,180,0.6);font-size:10px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;" onmouseover="this.style.background='rgba(40,80,120,0.3)';this.style.color='#8ab0d0';" onmouseout="this.style.background='rgba(40,80,120,0.15)';this.style.color='rgba(120,150,180,0.6)';">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            导出 Excel
+                        </button>
+                    </div>
+                    <div class="panel-sub">今天为中线 · 前后各15天 · 北京</div>
+                </div>
+            </div>
+            <button class="collapse-btn" onclick="toggleSection('tableBody','tableArrow','tableText')">
+                <span id="tableArrow" style="display:inline-flex;transition:transform 0.3s;">▼</span>
+                <span id="tableText" style="white-space:nowrap;">收起</span>
+            </button>
+        </div>
+        <div id="tableBody" style="transition:all 0.3s;">
+            <div style="overflow-x:auto;">
+                <table id="tempDataTable" style="width:100%;border-collapse:separate;border-spacing:0;font-size:11px;table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:120px;">
+                        <col>
+                        <col>
+                        <col>
+                        <col>
+                        <col>
+                        <col>
+                    </colgroup>
+                    <thead>
+                        <tr style="border-bottom:1px solid rgba(60,100,140,0.12);">
+                            <th style="padding:8px 10px;text-align:left;color:rgba(120,150,180,0.5);font-weight:600;letter-spacing:0.5px;font-size:10px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:1;">日期</th>
+                            <th colspan="2" style="padding:8px 10px;text-align:center;color:#4a90b8;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">2026</th>
+                            <th colspan="2" style="padding:8px 10px;text-align:center;color:#3a9a62;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">2025</th>
+                            <th colspan="2" style="padding:8px 10px;text-align:center;color:#a86858;font-weight:600;letter-spacing:1px;font-size:10px;border-left:1px solid rgba(60,100,140,0.08);border-right:1px solid rgba(60,100,140,0.08);">2024</th>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(60,100,140,0.15);">
+                            <th style="padding:6px 10px;text-align:left;color:rgba(120,150,180,0.35);font-weight:400;font-size:9px;position:sticky;left:0;background:rgba(14,22,35,0.98);z-index:1;"></th>
+                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
+                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
+                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
+                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
+                            <th style="padding:6px 10px;text-align:center;color:#a86858;font-weight:400;font-size:9px;">最高</th>
+                            <th style="padding:6px 10px;text-align:center;color:#4a88a8;font-weight:400;font-size:9px;">最低</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tempTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+function toggleSection(bodyId, arrowId, textId) {
+    var body = document.getElementById(bodyId);
+    var arrow = document.getElementById(arrowId);
+    var text = document.getElementById(textId);
+    if (body.style.display === 'none') {
+        body.style.display = '';
+        arrow.style.transform = 'rotate(0deg)';
+        text.textContent = '收起';
+    } else {
+        body.style.display = 'none';
+        arrow.style.transform = 'rotate(-90deg)';
+        text.textContent = '展开';
+    }
+}
+
+// ── 最高气温对比图 ──
+(function() {
+    // 北京真实数据（data.js），todayIdx=14（4/29），取 0~29（4/15~5/13，前后各15天）
+    const labels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    const todayIdx = 14;
+
+    const max2026 = [23,19,21,25,22,23,25,23,24,25,27,25,22,20,25,23,26,28,29,19,17,18,22,25,27,26,20,24,26];
+    const max2025 = [32,28,29,20,22,25,20,24,27,22,24,26,26,26,24,27,29,28,26,20,18,19,23,26,28,30,27,21,25];
+    const max2024 = [23,26,28,30,20,23,25,26,20,26,28,28,23,17,26,24,22,18,16,17,21,25,27,26,22,20,24,28,26];
+
+    new Chart(document.getElementById('maxTempChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '2026',
+                    data: max2026,
+                    borderColor: '#4a90b8',
+                    backgroundColor: 'rgba(74,144,184,0.08)',
+                    tension: 0.35,
+                    pointRadius: 2.5,
+                    pointHoverRadius: 5,
+                    borderWidth: 2.2,
+                    fill: false,
+                },
+                {
+                    label: '2025',
+                    data: max2025,
+                    borderColor: '#3a9a62',
+                    backgroundColor: 'rgba(58,154,98,0.06)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [5, 3],
+                    fill: false,
+                },
+                {
+                    label: '2024',
+                    data: max2024,
+                    borderColor: '#a86858',
+                    backgroundColor: 'rgba(168,104,88,0.05)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [3, 3],
+                    fill: false,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        font: { size: 11 },
+                        color: 'rgba(120,150,180,0.7)',
+                        padding: 16,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(14,22,35,0.95)',
+                    borderColor: 'rgba(60,100,140,0.2)',
+                    borderWidth: 1,
+                    titleColor: '#8ab0d0',
+                    bodyColor: '#a0b4cc',
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 12 },
+                    padding: 10,
+                    cornerRadius: 6,
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.raw}°C`
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        todayLine: {
+                            type: 'line',
+                            xMin: todayIdx,
+                            xMax: todayIdx,
+                            borderColor: 'rgba(176,152,48,0.6)',
+                            borderWidth: 1.5,
+                            borderDash: [4, 3],
+                            label: {
+                                display: true,
+                                content: '今天',
+                                color: '#b09830',
+                                backgroundColor: 'rgba(14,22,35,0.9)',
+                                font: { size: 10, weight: 'bold' },
+                                position: 'start',
+                                padding: { top: 2, bottom: 2, left: 6, right: 6 },
+                                borderRadius: 3,
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        font: { size: 9 },
+                        color: 'rgba(120,150,180,0.4)',
+                        maxRotation: 0,
+                        callback: function(val, idx) {
+                            // 只显示部分标签避免拥挤
+                            return idx % 2 === 0 ? this.getLabelForValue(val) : '';
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        callback: v => v + '°',
+                        font: { size: 10 },
+                        color: 'rgba(120,150,180,0.4)',
+                    }
+                }
+            }
+        }
+    });
+})();
+
+// ── 最低气温对比图 ──
+(function() {
+    const labels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    const todayIdx = 14;
+
+    const min2026 = [9,8,9,11,9,10,11,10,10,11,13,12,10,9,11,12,13,14,15,10,9,10,11,12,13,14,11,12,13];
+    const min2025 = [16,15,16,11,12,13,11,13,14,12,13,14,14,13,13,14,15,16,15,12,11,11,12,13,14,15,14,12,13];
+    const min2024 = [10,12,13,15,10,11,12,13,10,13,14,14,11,8,12,11,10,9,8,9,10,12,13,14,11,10,11,14,13];
+
+    new Chart(document.getElementById('minTempChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '2026',
+                    data: min2026,
+                    borderColor: '#4a90b8',
+                    backgroundColor: 'rgba(74,144,184,0.08)',
+                    tension: 0.35,
+                    pointRadius: 2.5,
+                    pointHoverRadius: 5,
+                    borderWidth: 2.2,
+                    fill: false,
+                },
+                {
+                    label: '2025',
+                    data: min2025,
+                    borderColor: '#3a9a62',
+                    backgroundColor: 'rgba(58,154,98,0.06)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [5, 3],
+                    fill: false,
+                },
+                {
+                    label: '2024',
+                    data: min2024,
+                    borderColor: '#a86858',
+                    backgroundColor: 'rgba(168,104,88,0.05)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [3, 3],
+                    fill: false,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        font: { size: 11 },
+                        color: 'rgba(120,150,180,0.7)',
+                        padding: 16,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(14,22,35,0.95)',
+                    borderColor: 'rgba(60,100,140,0.2)',
+                    borderWidth: 1,
+                    titleColor: '#8ab0d0',
+                    bodyColor: '#a0b4cc',
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 12 },
+                    padding: 10,
+                    cornerRadius: 6,
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.raw}°C`
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        todayLine: {
+                            type: 'line',
+                            xMin: todayIdx,
+                            xMax: todayIdx,
+                            borderColor: 'rgba(74,136,168,0.6)',
+                            borderWidth: 1.5,
+                            borderDash: [4, 3],
+                            label: {
+                                display: true,
+                                content: '今天',
+                                color: '#4a88a8',
+                                backgroundColor: 'rgba(14,22,35,0.9)',
+                                font: { size: 10, weight: 'bold' },
+                                position: 'start',
+                                padding: { top: 2, bottom: 2, left: 6, right: 6 },
+                                borderRadius: 3,
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        font: { size: 9 },
+                        color: 'rgba(120,150,180,0.4)',
+                        maxRotation: 0,
+                        callback: function(val, idx) {
+                            return idx % 2 === 0 ? this.getLabelForValue(val) : '';
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        callback: v => v + '°',
+                        font: { size: 10 },
+                        color: 'rgba(120,150,180,0.4)',
+                    }
+                }
+            }
+        }
+    });
+})();
+
+// ── 温差对比图 ──
+(function() {
+    const labels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    const todayIdx = 14;
+
+    const max2026 = [23,19,21,25,22,23,25,23,24,25,27,25,22,20,25,23,26,28,29,19,17,18,22,25,27,26,20,24,26];
+    const min2026 = [9,8,9,11,9,10,11,10,10,11,13,12,10,9,11,12,13,14,15,10,9,10,11,12,13,14,11,12,13];
+    const max2025 = [32,28,29,20,22,25,20,24,27,22,24,26,26,26,24,27,29,28,26,20,18,19,23,26,28,30,27,21,25];
+    const min2025 = [16,15,16,11,12,13,11,13,14,12,13,14,14,13,13,14,15,16,15,12,11,11,12,13,14,15,14,12,13];
+    const max2024 = [23,26,28,30,20,23,25,26,20,26,28,28,23,17,26,24,22,18,16,17,21,25,27,26,22,20,24,28,26];
+    const min2024 = [10,12,13,15,10,11,12,13,10,13,14,14,11,8,12,11,10,9,8,9,10,12,13,14,11,10,11,14,13];
+
+    const diff2026 = max2026.map((v,i) => v - min2026[i]);
+    const diff2025 = max2025.map((v,i) => v - min2025[i]);
+    const diff2024 = max2024.map((v,i) => v - min2024[i]);
+
+    new Chart(document.getElementById('diffTempChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '2026',
+                    data: diff2026,
+                    borderColor: '#4a90b8',
+                    backgroundColor: 'rgba(74,144,184,0.08)',
+                    tension: 0.35,
+                    pointRadius: 2.5,
+                    pointHoverRadius: 5,
+                    borderWidth: 2.2,
+                    fill: false,
+                },
+                {
+                    label: '2025',
+                    data: diff2025,
+                    borderColor: '#3a9a62',
+                    backgroundColor: 'rgba(58,154,98,0.06)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [5, 3],
+                    fill: false,
+                },
+                {
+                    label: '2024',
+                    data: diff2024,
+                    borderColor: '#a86858',
+                    backgroundColor: 'rgba(168,104,88,0.05)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.8,
+                    borderDash: [3, 3],
+                    fill: false,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        font: { size: 11 },
+                        color: 'rgba(120,150,180,0.7)',
+                        padding: 16,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(14,22,35,0.95)',
+                    borderColor: 'rgba(60,100,140,0.2)',
+                    borderWidth: 1,
+                    titleColor: '#8ab0d0',
+                    bodyColor: '#a0b4cc',
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 12 },
+                    padding: 10,
+                    cornerRadius: 6,
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.raw}°C`
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        todayLine: {
+                            type: 'line',
+                            xMin: todayIdx,
+                            xMax: todayIdx,
+                            borderColor: 'rgba(128,104,176,0.6)',
+                            borderWidth: 1.5,
+                            borderDash: [4, 3],
+                            label: {
+                                display: true,
+                                content: '今天',
+                                color: '#8068b0',
+                                backgroundColor: 'rgba(14,22,35,0.9)',
+                                font: { size: 10, weight: 'bold' },
+                                position: 'start',
+                                padding: { top: 2, bottom: 2, left: 6, right: 6 },
+                                borderRadius: 3,
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        font: { size: 9 },
+                        color: 'rgba(120,150,180,0.4)',
+                        maxRotation: 0,
+                        callback: function(val, idx) {
+                            return idx % 2 === 0 ? this.getLabelForValue(val) : '';
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(60,100,140,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        callback: v => v + '°',
+                        font: { size: 10 },
+                        color: 'rgba(120,150,180,0.4)',
+                    }
+                }
+            }
+        }
+    });
+})();
+
+// ── 多城市对比（动态管理） ──
+var CityCompare = (function() {
+    const labels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    const todayIdx = 14;
+
+    // 城市数据库（带省份）
+    const cityDB = {
+        '北京': { province: '北京', max: [23,19,21,25,22,23,25,23,24,25,27,25,22,20,25,23,26,28,29,19,17,18,22,25,27,26,20,24,26], min: [9,8,9,11,9,10,11,10,10,11,13,12,10,9,11,12,13,14,15,10,9,10,11,12,13,14,11,12,13] },
+        '上海': { province: '上海', max: [24,22,23,26,24,25,27,25,26,27,28,27,24,23,27,28,28,25,23,26,29,32,25,24,28,31,30,34,33], min: [15,14,15,17,16,16,18,16,17,18,19,18,16,15,18,19,19,17,16,18,20,22,17,17,19,21,20,23,22] },
+        '广州': { province: '广东', max: [28,27,28,30,29,30,31,29,30,31,32,31,28,27,31,32,32,29,28,30,33,35,29,28,32,34,33,36,35], min: [21,20,21,23,22,22,24,22,23,24,25,24,21,20,24,25,25,23,22,24,26,28,23,22,25,27,26,28,27] },
+        '深圳': { province: '广东', max: [29,28,29,31,30,31,32,30,31,32,33,32,29,28,32,33,33,30,29,31,34,36,30,29,33,35,34,37,36], min: [23,22,23,25,24,24,26,24,25,26,27,26,23,22,26,27,27,25,24,26,28,30,25,24,27,29,28,30,29] },
+        '沈阳': { province: '辽宁', max: [18,15,16,21,17,18,20,18,19,20,22,20,17,15,20,22,21,17,15,19,22,26,17,16,21,25,24,30,27], min: [5,3,4,7,4,5,7,5,5,7,9,8,5,3,7,8,9,5,3,5,8,10,5,5,8,10,9,13,11] },
+        '哈尔滨': { province: '黑龙江', max: [15,12,13,18,14,15,17,15,16,17,19,17,14,12,17,19,18,14,12,16,19,23,14,13,18,22,21,27,24], min: [2,-1,0,3,0,1,3,1,1,3,5,4,1,-1,3,4,5,1,-1,1,4,6,1,1,4,6,5,9,7] },
+        '郑州': { province: '河南', max: [25,22,24,27,24,25,27,25,26,27,28,27,24,22,27,28,28,25,23,26,29,32,24,23,27,30,29,33,31], min: [12,10,11,14,12,13,14,13,13,14,16,15,12,10,14,15,16,13,11,14,16,18,13,13,16,18,17,20,18] },
+        '青岛': { province: '山东', max: [18,16,17,20,17,18,20,18,19,20,21,20,17,16,20,21,21,18,17,19,22,24,18,17,21,23,22,26,24], min: [10,9,10,12,10,11,12,11,11,12,14,13,10,9,12,13,14,11,10,12,14,16,11,11,14,16,15,18,16] },
+        '杭州': { province: '浙江', max: [25,23,24,27,25,26,28,26,27,28,29,28,25,24,28,29,29,26,24,27,30,33,26,25,29,32,31,35,33], min: [14,13,14,16,15,15,17,15,16,17,18,17,14,13,17,18,18,16,15,17,19,21,16,16,18,20,19,22,21] },
+        '西安': { province: '陕西', max: [24,21,23,26,23,24,26,24,25,26,27,26,23,21,26,27,27,24,22,25,28,31,23,22,26,29,28,32,30], min: [10,8,9,12,10,11,12,11,11,12,14,13,10,8,12,13,14,11,9,12,14,16,11,11,14,16,15,18,16] },
+        '成都': { province: '四川', max: [24,22,23,26,24,25,27,25,26,27,28,27,24,23,27,28,28,25,24,26,29,31,25,24,28,30,29,33,31], min: [15,14,15,17,16,16,18,16,17,18,19,18,15,14,18,19,19,17,16,18,20,22,17,16,19,21,20,23,22] },
+        '武汉': { province: '湖北', max: [26,24,25,28,26,27,29,27,28,29,30,29,26,25,29,30,30,27,25,28,31,34,27,26,30,33,32,36,34], min: [15,14,15,17,16,16,18,16,17,18,19,18,15,14,18,19,19,17,16,18,20,22,17,16,19,21,20,23,22] },
+    };
+
+    // 城市配色（最多3个，与温差模块一致：蓝/绿/红）
+    const cityColors = [
+        { main: '#4a90b8', bg: 'rgba(74,144,184,0.15)', border: 'rgba(74,144,184,0.3)' },
+        { main: '#3a9a62', bg: 'rgba(58,154,98,0.12)', border: 'rgba(58,154,98,0.25)' },
+        { main: '#a86858', bg: 'rgba(168,104,88,0.12)', border: 'rgba(168,104,88,0.25)' },
+    ];
+
+    var activeCities = [];
+    var maxChart = null;
+    var minChart = null;
+
+    function getAvailableCities() {
+        return Object.keys(cityDB).filter(function(c) { return activeCities.indexOf(c) === -1; });
+    }
+
+    function updateUI() {
+        var bar = document.getElementById('cityTagBar');
+        var addBtn = document.getElementById('addCityBtn');
+        var dropdown = document.getElementById('cityDropdown');
+        var emptyState = document.getElementById('cityEmptyState');
+        var chartArea = document.getElementById('cityChartArea');
+        var legend = document.getElementById('cityLegend');
+        var sub = document.getElementById('cityPanelSub');
+
+        // 清除旧标签（保留 addBtn 和 dropdown）
+        var tags = bar.querySelectorAll('.city-tag-item');
+        tags.forEach(function(t) { t.remove(); });
+
+        // 生成城市标签
+        activeCities.forEach(function(city, idx) {
+            var c = cityColors[idx];
+            var tag = document.createElement('div');
+            tag.className = 'city-tag-item';
+            tag.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 12px;background:' + c.bg + ';border:1px solid ' + c.border + ';border-radius:16px;font-size:12px;color:' + c.main + ';';
+            tag.innerHTML = '<span>' + city + '</span><span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="CityCompare.removeCity(\'' + city + '\')">×</span>';
+            bar.insertBefore(tag, addBtn);
+        });
+
+        // 添加按钮显隐
+        addBtn.style.display = activeCities.length >= 3 ? 'none' : 'flex';
+
+        // 副标题
+        if (activeCities.length === 0) {
+            sub.textContent = '最多3个城市 · 同年份对比';
+        } else {
+            sub.textContent = activeCities.join(' vs ') + ' · 2026年对比';
+        }
+
+        // 空状态 / 图表区域
+        if (activeCities.length === 0) {
+            emptyState.style.display = 'flex';
+            chartArea.style.display = 'none';
+        } else {
+            emptyState.style.display = 'none';
+            chartArea.style.display = 'block';
+        }
+
+        // 图例
+        legend.innerHTML = '';
+        activeCities.forEach(function(city, idx) {
+            var c = cityColors[idx];
+            var item = document.createElement('div');
+            item.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(120,150,180,0.6);';
+            item.innerHTML = '<span style="width:10px;height:10px;border:2px solid ' + c.main + ';border-radius:50%;background:transparent;"></span><span>' + city + '</span>';
+            legend.appendChild(item);
+        });
+
+        // 刷新图表
+        renderCharts();
+    }
+
+    function renderCharts() {
+        if (activeCities.length === 0) return;
+
+        var datasets_max = [];
+        var datasets_min = [];
+        activeCities.forEach(function(city, idx) {
+            var c = cityColors[idx];
+            var d = cityDB[city];
+            var isSecond = idx > 0;
+            datasets_max.push({
+                label: city,
+                data: d.max,
+                borderColor: c.main,
+                backgroundColor: c.bg,
+                tension: 0.35,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                borderWidth: 2,
+                borderDash: isSecond ? [5, 3] : [],
+                fill: false,
+            });
+            datasets_min.push({
+                label: city,
+                data: d.min,
+                borderColor: c.main,
+                backgroundColor: c.bg,
+                tension: 0.35,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                borderWidth: 2,
+                borderDash: isSecond ? [5, 3] : [],
+                fill: false,
+            });
+        });
+
+        var chartOpts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(14,22,35,0.95)',
+                    borderColor: 'rgba(60,100,140,0.2)',
+                    borderWidth: 1,
+                    titleColor: '#8ab0d0',
+                    bodyColor: '#a0b4cc',
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 11 },
+                    padding: 8,
+                    cornerRadius: 6,
+                    callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + '°C'; } }
+                },
+                annotation: {
+                    annotations: {
+                        todayLine: {
+                            type: 'line',
+                            xMin: todayIdx,
+                            xMax: todayIdx,
+                            borderColor: 'rgba(160,136,40,0.5)',
+                            borderWidth: 1.2,
+                            borderDash: [3, 3],
+                            label: {
+                                display: true,
+                                content: '今天',
+                                color: '#b09830',
+                                backgroundColor: 'rgba(14,22,35,0.9)',
+                                font: { size: 9, weight: 'bold' },
+                                position: 'start',
+                                padding: { top: 1, bottom: 1, left: 5, right: 5 },
+                                borderRadius: 3,
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(60,100,140,0.04)', drawBorder: false },
+                    ticks: {
+                        font: { size: 8 },
+                        color: 'rgba(120,150,180,0.4)',
+                        maxRotation: 0,
+                        callback: function(val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; }
+                    }
+                },
+                y: {
+                    grid: { color: 'rgba(60,100,140,0.04)', drawBorder: false },
+                    ticks: {
+                        callback: function(v) { return v + '°'; },
+                        font: { size: 9 },
+                        color: 'rgba(120,150,180,0.4)',
+                    }
+                }
+            }
+        };
+
+        // 销毁旧图表
+        if (maxChart) { maxChart.destroy(); maxChart = null; }
+        if (minChart) { minChart.destroy(); minChart = null; }
+
+        maxChart = new Chart(document.getElementById('cityMaxTempChart'), {
+            type: 'line',
+            data: { labels: labels, datasets: datasets_max },
+            options: chartOpts
+        });
+        minChart = new Chart(document.getElementById('cityMinTempChart'), {
+            type: 'line',
+            data: { labels: labels, datasets: datasets_min },
+            options: chartOpts
+        });
+    }
+
+    function renderDialogList(filter) {
+        var listEl = document.getElementById('cityDialogList');
+        var avail = getAvailableCities();
+        var kw = (filter || '').trim().toLowerCase();
+
+        // 按省份分组
+        var grouped = {};
+        avail.forEach(function(city) {
+            if (kw && city.toLowerCase().indexOf(kw) === -1 && cityDB[city].province.toLowerCase().indexOf(kw) === -1) return;
+            var prov = cityDB[city].province;
+            if (!grouped[prov]) grouped[prov] = [];
+            grouped[prov].push(city);
+        });
+
+        listEl.innerHTML = '';
+
+        if (Object.keys(grouped).length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;padding:30px 0;color:rgba(120,150,180,0.25);font-size:12px;">未找到匹配城市</div>';
+            return;
+        }
+
+        var provKeys = Object.keys(grouped);
+        provKeys.forEach(function(prov) {
+            // 省份标题
+            var provTitle = document.createElement('div');
+            provTitle.style.cssText = 'font-size:10px;color:rgba(120,150,180,0.3);letter-spacing:1px;padding:8px 0 4px;text-transform:uppercase;';
+            provTitle.textContent = prov;
+            listEl.appendChild(provTitle);
+
+            // 城市按钮
+            var row = document.createElement('div');
+            row.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;';
+            grouped[prov].forEach(function(city) {
+                var btn = document.createElement('div');
+                btn.style.cssText = 'padding:8px 0;text-align:center;border-radius:6px;background:rgba(30,50,70,0.3);border:1px solid rgba(60,100,140,0.1);color:rgba(120,150,180,0.55);font-size:12px;cursor:pointer;transition:all 0.2s;letter-spacing:1px;';
+                btn.textContent = city;
+                btn.onmouseover = function() { this.style.background='rgba(35,60,85,0.45)'; this.style.borderColor='rgba(60,100,140,0.25)'; this.style.color='#7aa0c0'; };
+                btn.onmouseout = function() { this.style.background='rgba(30,50,70,0.3)'; this.style.borderColor='rgba(60,100,140,0.1)'; this.style.color='rgba(120,150,180,0.55)'; };
+                btn.onclick = function() { CityCompare.addCity(city); };
+                row.appendChild(btn);
+            });
+            listEl.appendChild(row);
+        });
+    }
+
+    return {
+        openDialog: function() {
+            if (activeCities.length >= 3) return;
+            var overlay = document.getElementById('cityDialogOverlay');
+            overlay.style.display = 'flex';
+            // 清空搜索框
+            document.getElementById('citySearchInput').value = '';
+            // 渲染列表
+            renderDialogList('');
+            // 已选提示
+            var hint = document.getElementById('cityDialogActiveHint');
+            var hintList = document.getElementById('cityDialogActiveList');
+            if (activeCities.length > 0) {
+                hint.style.display = 'block';
+                hintList.textContent = activeCities.join(' / ');
+            } else {
+                hint.style.display = 'none';
+            }
+            // 延迟聚焦搜索框
+            setTimeout(function() { document.getElementById('citySearchInput').focus(); }, 100);
+        },
+        closeDialog: function() {
+            document.getElementById('cityDialogOverlay').style.display = 'none';
+        },
+        filterCities: function(val) {
+            renderDialogList(val);
+        },
+        addCity: function(city) {
+            if (activeCities.length >= 3) return;
+            if (activeCities.indexOf(city) !== -1) return;
+            if (!cityDB[city]) return;
+            activeCities.push(city);
+            updateUI();
+            // 如果对话框开着，刷新列表；如果满了就关闭
+            if (activeCities.length >= 3) {
+                document.getElementById('cityDialogOverlay').style.display = 'none';
+            } else {
+                renderDialogList(document.getElementById('citySearchInput').value);
+                // 更新已选提示
+                document.getElementById('cityDialogActiveList').textContent = activeCities.join(' / ');
+            }
+        },
+        removeCity: function(city) {
+            var idx = activeCities.indexOf(city);
+            if (idx === -1) return;
+            activeCities.splice(idx, 1);
+            updateUI();
+        }
+    };
+})();
+
+// ── 气温数据表渲染 ──
+(function() {
+    const dateLabels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    const todayIdx = 14;
+
+    const max2026 = [23,19,21,25,22,23,25,23,24,25,27,25,22,20,25,23,26,28,29,19,17,18,22,25,27,26,20,24,26];
+    const min2026 = [9,8,9,11,9,10,11,10,10,11,13,12,10,9,11,12,13,14,15,10,9,10,11,12,13,14,11,12,13];
+    const max2025 = [32,28,29,20,22,25,20,24,27,22,24,26,26,26,24,27,29,28,26,20,18,19,23,26,28,30,27,21,25];
+    const min2025 = [16,15,16,11,12,13,11,13,14,12,13,14,14,13,13,14,15,16,15,12,11,11,12,13,14,15,14,12,13];
+    const max2024 = [23,26,28,30,20,23,25,26,20,26,28,28,23,17,26,24,22,18,16,17,21,25,27,26,22,20,24,28,26];
+    const min2024 = [10,12,13,15,10,11,12,13,10,13,14,14,11,8,12,11,10,9,8,9,10,12,13,14,11,10,11,14,13];
+
+    // 星期映射（2026年4-5月）
+    const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+    function getWeekday(label) {
+        var parts = label.split('/');
+        var d = new Date(2026, parseInt(parts[0]) - 1, parseInt(parts[1]));
+        return weekdays[d.getDay()];
+    }
+
+    var tbody = document.getElementById('tempTableBody');
+    for (var i = 0; i < dateLabels.length; i++) {
+        var isToday = (i === todayIdx);
+        var tr = document.createElement('tr');
+        tr.style.cssText = 'border-bottom:1px solid rgba(60,100,140,0.04);transition:background 0.15s;';
+        if (isToday) {
+            tr.style.background = 'rgba(160,136,40,0.04)';
+        }
+        tr.onmouseover = function() { this.style.background = 'rgba(30,50,70,0.2)'; };
+        tr.onmouseout = function() { this.style.background = this._isToday ? 'rgba(160,136,40,0.04)' : ''; };
+
+        // 日期列
+        var tdDate = document.createElement('td');
+        tdDate.style.cssText = 'padding:7px 10px;white-space:nowrap;position:sticky;left:0;background:inherit;z-index:1;';
+        var dateStr = dateLabels[i];
+        var wdStr = getWeekday(dateStr);
+        if (isToday) {
+            tdDate.innerHTML = '<span style="color:#b09830;font-weight:700;">' + dateStr + '</span> <span style="font-size:8px;color:#b09830;opacity:0.6;">' + wdStr + '</span> <span style="font-size:7px;color:#b09830;opacity:0.5;background:rgba(160,136,40,0.12);padding:1px 4px;border-radius:3px;margin-left:2px;">TODAY</span>';
+        } else {
+            tdDate.innerHTML = '<span style="color:rgba(160,180,200,0.6);">' + dateStr + '</span> <span style="font-size:8px;color:rgba(120,150,180,0.3);">' + wdStr + '</span>';
+        }
+        tr.appendChild(tdDate);
+
+        // 6个数据列
+        var dataArrs = [max2026, min2026, max2025, min2025, max2024, min2024];
+        var colors = ['#a86858', '#4a88a8', '#a86858', '#4a88a8', '#a86858', '#4a88a8'];
+        for (var j = 0; j < 6; j++) {
+            var td = document.createElement('td');
+            td.style.cssText = 'padding:7px 10px;text-align:center;';
+            td.innerHTML = '<span style="color:' + colors[j] + ';opacity:0.75;">' + dataArrs[j][i] + '°</span>';
+            if (j === 0 || j === 2 || j === 4) {
+                td.style.borderLeft = '1px solid rgba(60,100,140,0.06)';
+            }
+            if (j === 1 || j === 3 || j === 5) {
+                td.style.borderRight = '1px solid rgba(60,100,140,0.06)';
+            }
+            tr.appendChild(td);
+        }
+
+        tr._isToday = isToday;
+        tbody.appendChild(tr);
+    }
+})();
+
+// ── 导出 Excel ──
+function exportTempTable() {
+    var dateLabels = ['4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30','5/1','5/2','5/3','5/4','5/5','5/6','5/7','5/8','5/9','5/10','5/11','5/12','5/13'];
+    var todayIdx = 14;
+    var max2026 = [23,19,21,25,22,23,25,23,24,25,27,25,22,20,25,23,26,28,29,19,17,18,22,25,27,26,20,24,26];
+    var min2026 = [9,8,9,11,9,10,11,10,10,11,13,12,10,9,11,12,13,14,15,10,9,10,11,12,13,14,11,12,13];
+    var max2025 = [32,28,29,20,22,25,20,24,27,22,24,26,26,26,24,27,29,28,26,20,18,19,23,26,28,30,27,21,25];
+    var min2025 = [16,15,16,11,12,13,11,13,14,12,13,14,14,13,13,14,15,16,15,12,11,11,12,13,14,15,14,12,13];
+    var max2024 = [23,26,28,30,20,23,25,26,20,26,28,28,23,17,26,24,22,18,16,17,21,25,27,26,22,20,24,28,26];
+    var min2024 = [10,12,13,15,10,11,12,13,10,13,14,14,11,8,12,11,10,9,8,9,10,12,13,14,11,10,11,14,13];
+
+    var wsData = [['日期', '2026最高温', '2026最低温', '2025最高温', '2025最低温', '2024最高温', '2024最低温']];
+    for (var i = 0; i < dateLabels.length; i++) {
+        wsData.push([
+            '2026/' + dateLabels[i].replace('/', '-') + (i === todayIdx ? ' (今天)' : ''),
+            max2026[i], min2026[i], max2025[i], min2025[i], max2024[i], min2024[i]
+        ]);
+    }
+
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // 列宽
+    ws['!cols'] = [
+        {wch: 14}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, '气温数据');
+    XLSX.writeFile(wb, '北京气温数据_2026-04-29.xlsx');
+}
+</script>
+</body>
+</html>
