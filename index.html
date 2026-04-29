@@ -829,6 +829,21 @@ function renderCityGrid() {
     });
 }
 
+// ═══════════════════════════════════════════════════
+// 城市标签折叠状态（localStorage记忆）
+// ═══════════════════════════════════════════════════
+(function initCityBarState() {
+    var saved = localStorage.getItem('cityBarCollapsed');
+    if (saved === 'true') {
+        var bar = document.getElementById('cityBar');
+        var arrow = document.getElementById('cityArrow');
+        var text = document.getElementById('cityCollapseText');
+        if (bar) bar.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        if (text) text.textContent = '展开';
+    }
+})();
+
 function toggleCityGrid() {
     var bar = document.getElementById('cityBar');
     var arrow = document.getElementById('cityArrow');
@@ -837,10 +852,12 @@ function toggleCityGrid() {
         bar.classList.remove('hidden');
         arrow.style.transform = '';
         text.textContent = '收起';
+        localStorage.setItem('cityBarCollapsed', 'false');
     } else {
         bar.classList.add('hidden');
         arrow.style.transform = 'rotate(180deg)';
         text.textContent = '展开';
+        localStorage.setItem('cityBarCollapsed', 'true');
     }
 }
 
