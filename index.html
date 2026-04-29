@@ -1533,21 +1533,25 @@ var CityCompare = (function() {
 var tableCache = { labels: [], data: {} }; // 用于 Excel 导出
 
 function renderTempTable(cityData, today) {
+    console.log('renderTempTable called', { today: today, cityDataKeys: Object.keys(cityData), yearKeys: yearKeys });
     var d26 = cityData[yearKeys[2]];
     var d25 = cityData[yearKeys[1]];
     var d24 = cityData[yearKeys[0]];
+    console.log('d26:', d26 ? 'exists' : 'MISSING', d26 ? 'time length: ' + d26.time.length : '');
 
     if (!d26 || !d26.time) {
-        console.error('renderTempTable: d26 missing', d26);
+        console.error('renderTempTable: d26 missing');
         document.getElementById('tempTableBody').innerHTML = '<tr><td colspan="7" style="color:rgba(120,150,180,0.5);padding:20px;text-align:center;">数据加载中...</td></tr>';
         return;
     }
 
     var todayIdx = d26.time.indexOf(today);
+    console.log('todayIdx:', todayIdx, 'today:', today);
     if (todayIdx < 0) todayIdx = d26.time.length - 1;
 
     var startIdx = Math.max(0, todayIdx - 15);
     var endIdx = Math.min(d26.time.length, todayIdx + 16);
+    console.log('Rendering rows:', startIdx, 'to', endIdx, 'count:', endIdx - startIdx);
 
     // 按月/日对齐 2025、2024 数据
     var aligned25 = d25 ? alignRecord(d26, d25, startIdx, endIdx) : null;
