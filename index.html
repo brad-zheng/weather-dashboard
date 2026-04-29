@@ -350,6 +350,10 @@
         .kpi-label { font-size: 8px !important; white-space: nowrap; }
         .kpi-hint { font-size: 8px !important; white-space: nowrap; }
         .kpi-card { padding: 10px 6px !important; min-height: 70px !important; }
+        .header-label { display: none; }
+        .collapse-btn { font-size: 10px !important; padding: 3px 6px !important; }
+        .header-right { gap: 4px !important; }
+        .icon-btn { width: 28px !important; height: 28px !important; font-size: 13px !important; }
     }
     </style>
 </head>
@@ -375,7 +379,7 @@
                 </div>
             </div>
             <div class="header-right">
-                <span style="color:rgba(120,150,180,0.6);font-size:11px;letter-spacing:0.5px;margin-right:6px;">城市快速入口</span>
+                <span class="header-label">城市速选</span>
                 <button class="collapse-btn" id="cityCollapseBtn" onclick="toggleCityGrid()" title="折叠城市标签" style="margin-right:8px;">
                     <span id="cityArrow" style="display:inline-flex;transition:transform 0.3s;">▲</span>
                     <span id="cityCollapseText" style="white-space:nowrap;">收起</span>
