@@ -1535,6 +1535,10 @@ var CityCompare = (function() {
 // ═══════════════════════════════════════════════════
 
 function renderTempTable(cityData, today) {
+    if (typeof tableCache === 'undefined') {
+        console.warn('tableCache not found, initializing...');
+        window.tableCache = { labels: [], data: {} };
+    }
     console.log('tableCache:', typeof tableCache, tableCache);
     console.log('renderTempTable called', { today: today, cityDataKeys: Object.keys(cityData), yearKeys: yearKeys });
     var d26 = cityData[yearKeys[2]];
