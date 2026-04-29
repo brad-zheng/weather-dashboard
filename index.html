@@ -867,8 +867,8 @@ function loadCity(name) {
     var weekDays = ['周日','周一','周二','周三','周四','周五','周六'];
     document.getElementById('kpiDateHint').textContent = today + ' ' + weekDays[new Date(today).getDay()];
 
-    document.getElementById('k1').textContent = d.max[idx] + '°C';
-    document.getElementById('k2').textContent = d.min[idx] + '°C';
+    document.getElementById('k1').textContent = Math.round(d.max[idx]) + '°C';
+    document.getElementById('k2').textContent = Math.round(d.min[idx]) + '°C';
     var wc = d.wc ? d.wc[idx] : null;
     document.getElementById('k3').textContent = wc != null ? getWmoText(wc) : '--';
     var dress = d.dress ? d.dress[idx] : null;
@@ -876,8 +876,8 @@ function loadCity(name) {
 
     // 昨日温差
     if (idx > 0) {
-        var dMaxDiff = d.max[idx] - d.max[idx-1];
-        var dMinDiff = d.min[idx] - d.min[idx-1];
+        var dMaxDiff = Math.round(d.max[idx] - d.max[idx-1]);
+        var dMinDiff = Math.round(d.min[idx] - d.min[idx-1]);
         document.getElementById('k1hint').innerHTML = '较昨日 <span style="color:' + (dMaxDiff >= 0 ? '#3a9a62' : '#a86858') + ';">' + (dMaxDiff >= 0 ? '+' : '') + dMaxDiff + '°</span>';
         document.getElementById('k2hint').innerHTML = '较昨日 <span style="color:' + (dMinDiff >= 0 ? '#3a9a62' : '#a86858') + ';">' + (dMinDiff >= 0 ? '+' : '') + dMinDiff + '°</span>';
     } else {
@@ -981,8 +981,8 @@ function renderWeatherCalendar(cityData, today) {
             html += '<div class="wc-emoji">' + emoji + '</div>';
             html += '<div class="wc-text">' + short + '</div>';
             html += '<div class="wc-temp">';
-            html += '<span class="wc-temp-high">' + (maxT != null ? maxT + '°' : '--') + '</span>';
-            html += '<span class="wc-temp-low">' + (minT != null ? minT + '°' : '--') + '</span>';
+            html += '<span class="wc-temp-high">' + (maxT != null ? Math.round(maxT) + '°' : '--') + '</span>';
+            html += '<span class="wc-temp-low">' + (minT != null ? Math.round(minT) + '°' : '--') + '</span>';
             html += '</div></td>';
         }
         html += '</tr>';
@@ -1015,7 +1015,7 @@ function makeChartOpts(todayLineColor, todayLabelColor) {
                 bodyFont: { size: 12 },
                 padding: 10,
                 cornerRadius: 6,
-                callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + '°C'; } }
+                callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + Math.round(ctx.raw) + '°C'; } }
             },
             annotation: {
                 annotations: {
@@ -1049,7 +1049,7 @@ function makeChartOpts(todayLineColor, todayLabelColor) {
             },
             y: {
                 grid: { color: 'rgba(60,100,140,0.04)', drawBorder: false },
-                ticks: { callback: function(v) { return v + '°'; }, font: { size: 10 }, color: 'rgba(120,150,180,0.4)' }
+                ticks: { callback: function(v) { return Math.round(v) + '°'; }, font: { size: 10 }, color: 'rgba(120,150,180,0.4)' }
             }
         }
     };
@@ -1106,10 +1106,10 @@ function renderMaxTempChart(cityData, today) {
 
     // 统计
     var curSlice = d26.max.slice(startIdx, endIdx);
-    var curAvg = (curSlice.reduce(function(a,b){return a+b;},0) / curSlice.length).toFixed(1);
+    var curAvg = Math.round(curSlice.reduce(function(a,b){return a+b;},0) / curSlice.length);
     var histSlice = d24.max.slice(startIdx, endIdx).concat(d25.max.slice(startIdx, endIdx));
-    var histAvg = (histSlice.reduce(function(a,b){return a+b;},0) / histSlice.length).toFixed(1);
-    var diff = (curAvg - histAvg).toFixed(1);
+    var histAvg = Math.round(histSlice.reduce(function(a,b){return a+b;},0) / histSlice.length);
+    var diff = curAvg - histAvg;
     var diffStr = diff > 0 ? '+' + diff + '°' : diff + '°';
     var diffColor = diff > 0 ? '#b86050' : '#4a90b8';
     document.getElementById('maxChartSummary').innerHTML =
@@ -1316,7 +1316,7 @@ var CityCompare = (function() {
                     titleColor: '#8ab0d0', bodyColor: '#a0b4cc',
                     titleFont: { size: 11 }, bodyFont: { size: 11 },
                     padding: 8, cornerRadius: 6,
-                    callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw + '°C'; } }
+                    callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + Math.round(ctx.raw) + '°C'; } }
                 },
                 annotation: {
                     annotations: {
@@ -1337,7 +1337,7 @@ var CityCompare = (function() {
                     ticks: { font: { size: 8 }, color: 'rgba(120,150,180,0.4)', maxRotation: 0,
                         callback: function(val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; } } },
                 y: { grid: { color: 'rgba(60,100,140,0.04)', drawBorder: false },
-                    ticks: { callback: function(v) { return v + '°'; }, font: { size: 9 }, color: 'rgba(120,150,180,0.4)' } }
+                    ticks: { callback: function(v) { return Math.round(v) + '°'; }, font: { size: 9 }, color: 'rgba(120,150,180,0.4)' } }
             }
         };
 
@@ -1499,7 +1499,7 @@ function renderTempTable(cityData, today) {
         for (var j = 0; j < 6; j++) {
             var td = document.createElement('td');
             td.style.cssText = 'padding:7px 10px;text-align:center;';
-            td.innerHTML = '<span style="color:' + colors[j] + ';opacity:0.75;">' + (dataArrs[j] != null ? dataArrs[j] + '°' : '--') + '</span>';
+            td.innerHTML = '<span style="color:' + colors[j] + ';opacity:0.75;">' + (dataArrs[j] != null ? Math.round(dataArrs[j]) + '°' : '--') + '</span>';
             if (j === 0 || j === 2 || j === 4) td.style.borderLeft = '1px solid rgba(60,100,140,0.06)';
             if (j === 1 || j === 3 || j === 5) td.style.borderRight = '1px solid rgba(60,100,140,0.06)';
             tr.appendChild(td);
@@ -1529,7 +1529,12 @@ function exportTempTable() {
     for (var i = 0; i < tableCache.labels.length; i++) {
         wsData.push([
             tableCache.labels[i] + (i === 14 ? ' (今天)' : ''),
-            d.max26[i], d.min26[i], d.max25[i], d.min25[i], d.max24[i], d.min24[i]
+            d.max26[i] != null ? Math.round(d.max26[i]) : null,
+            d.min26[i] != null ? Math.round(d.min26[i]) : null,
+            d.max25[i] != null ? Math.round(d.max25[i]) : null,
+            d.min25[i] != null ? Math.round(d.min25[i]) : null,
+            d.max24[i] != null ? Math.round(d.max24[i]) : null,
+            d.min24[i] != null ? Math.round(d.min24[i]) : null
         ]);
     }
 
