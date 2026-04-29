@@ -1537,6 +1537,12 @@ function renderTempTable(cityData, today) {
     var d25 = cityData[yearKeys[1]];
     var d24 = cityData[yearKeys[0]];
 
+    if (!d26 || !d26.time) {
+        console.error('renderTempTable: d26 missing', d26);
+        document.getElementById('tempTableBody').innerHTML = '<tr><td colspan="7" style="color:rgba(120,150,180,0.5);padding:20px;text-align:center;">数据加载中...</td></tr>';
+        return;
+    }
+
     var todayIdx = d26.time.indexOf(today);
     if (todayIdx < 0) todayIdx = d26.time.length - 1;
 
