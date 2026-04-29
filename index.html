@@ -319,6 +319,10 @@
         overflow: hidden;
         display: flex; flex-direction: column;
     }
+    .city-chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media (max-width: 600px) {
+        .city-chart-grid { grid-template-columns:1fr; }
+    }
 
     /* ── Toast ───────────────────────────── */
     .toast {
@@ -546,16 +550,16 @@
                 <div style="font-size:10px;margin-top:4px;opacity:0.6;">最多同时对比 3 个城市</div>
             </div>
             <div id="cityChartArea" style="display:none;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div class="city-chart-grid">
                     <div>
                         <div style="font-size:10px;color:#c87864;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
-                            <span style="font-size:8px;">▲</span>MAX TEMP
+                            <span style="font-size:8px;">▲</span>最高气温
                         </div>
                         <div style="height:200px;position:relative;"><canvas id="cityMaxTempChart"></canvas></div>
                     </div>
                     <div>
                         <div style="font-size:10px;color:#4a90b8;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
-                            <span style="font-size:8px;">▼</span>MIN TEMP
+                            <span style="font-size:8px;">▼</span>最低气温
                         </div>
                         <div style="height:200px;position:relative;"><canvas id="cityMinTempChart"></canvas></div>
                     </div>
