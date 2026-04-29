@@ -164,7 +164,11 @@ def fetch_city(city_name, lat, lng, current_year):
     d26 = fetch_weather_current_year(city_name, lat, lng)
     # 礼貌限速
     time.sleep(0.5)
-    return {"24": d24, "25": d25, "26": d26}
+    # 动态年份：避免2027年后失效
+    y0 = str((current_year - 2) % 100).zfill(2)
+    y1 = str((current_year - 1) % 100).zfill(2)
+    y2 = str(current_year % 100).zfill(2)
+    return {y0: d24, y1: d25, y2: d26}
 
 def generate_js(data, timestamp):
     """生成 data.js 文件内容"""

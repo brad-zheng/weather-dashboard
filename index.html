@@ -600,7 +600,7 @@
 var chMax, chMin, chDiff;
 var currentCity = null;
 var cityList = [];
-var currentYear = new Date().getFullYear();
+var currentYear = parseInt(DATA_DATE.substring(0, 4)); // 使用DATA_DATE避免UTC偏移
 var yearKeys = [String((currentYear-2)%100), String((currentYear-1)%100), String(currentYear%100)];
 
 // Header 快捷城市列表
@@ -868,8 +868,8 @@ function loadCity(name) {
     // 更新 Header 快捷标签
     renderCityGrid();
 
-    // 计算 today
-    var today = new Date().toISOString().split('T')[0];
+    // 计算 today（使用DATA_DATE避免UTC偏移）
+    var today = DATA_DATE.substring(0, 10);
     var idx = d.time.indexOf(today);
     if (idx < 0) { today = d.time[d.time.length - 1]; idx = d.time.length - 1; }
 
@@ -1239,7 +1239,7 @@ var CityCompare = (function() {
     function getTodayRange(cityData) {
         var d = cityData[yearKeys[2]];
         if (!d || !d.time) return null;
-        var today = new Date().toISOString().split('T')[0];
+        var today = DATA_DATE.substring(0, 10); // 避免UTC偏移
         var todayIdx = d.time.indexOf(today);
         if (todayIdx < 0) { todayIdx = d.time.length - 1; }
         var startIdx = Math.max(0, todayIdx - 15);
