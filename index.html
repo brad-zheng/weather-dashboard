@@ -190,25 +190,30 @@
         padding: 14px;
         position: relative; overflow: hidden;
         transition: all 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 90px;
     }
     .kpi-card:hover {
         transform: translateY(-1px);
         border-color: rgba(60,100,140,0.2);
         box-shadow: 0 6px 18px rgba(0,0,0,0.3);
     }
-    .kpi-bar { height: 2px; border-radius: 1px; margin-bottom: 12px; }
+    .kpi-bar { height: 2px; border-radius: 1px; margin-bottom: 10px; width: 100%; }
     .kpi-bar-red    { background: linear-gradient(90deg, rgba(180,70,60,0.7), rgba(200,80,65,0.5)); }
     .kpi-bar-blue   { background: linear-gradient(90deg, rgba(50,110,160,0.7), rgba(60,130,180,0.5)); }
     .kpi-bar-green  { background: linear-gradient(90deg, rgba(45,120,75,0.7), rgba(55,140,90,0.5)); }
     .kpi-bar-purple { background: linear-gradient(90deg, rgba(100,70,140,0.7), rgba(120,85,160,0.5)); }
-    .kpi-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .kpi-card-top { display: none; }
+    .kpi-value { font-size: 32px; font-weight: 900; line-height: 1.1; letter-spacing: -1px; }
     .kpi-label {
         font-size: 9px; color: rgba(120,150,180,0.5);
-        letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;
+        letter-spacing: 0.5px; margin-top: 6px; text-align: center;
     }
-    .kpi-value { font-size: 26px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
-    .kpi-hint { font-size: 9px; color: rgba(120,150,180,0.35); margin-top: 5px; letter-spacing: 0.5px; }
-    .kpi-icon { font-size: 20px; opacity: 0.4; }
+    .kpi-hint { font-size: 9px; color: rgba(120,150,180,0.35); margin-top: 3px; letter-spacing: 0.5px; text-align: center; }
+    .kpi-icon { display: none; }
     .kpi-red    .kpi-value { color: #b86050; }
     .kpi-blue   .kpi-value { color: #4a90b8; }
     .kpi-green  .kpi-value { color: #3a9a62; }
@@ -447,7 +452,7 @@
                     <div class="kpi-bar kpi-bar-purple"></div>
                     <div class="kpi-card-top">
                         <div>
-                            <div class="kpi-label">穿衣建议</div>
+                            <div class="kpi-label">风力</div>
                             <div class="kpi-value" id="k4" style="font-size:15px;">--</div>
                             <div class="kpi-hint">和风天气</div>
                         </div>
