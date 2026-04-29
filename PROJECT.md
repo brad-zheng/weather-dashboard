@@ -1,7 +1,8 @@
 # Weather Dashboard - 工程文档
 
-> 项目地址: https://github.com/brad-zheng/weather-dashboard  
-> 在线访问: https://brad-zheng.github.io/weather-dashboard/
+> 项目地址: https://github.com/brad-zheng/weather-dashboard
+> GitHub Pages: https://brad-zheng.github.io/weather-dashboard/
+> Netlify: https://brad-weatherdashboard.netlify.app/
 
 ---
 
@@ -262,7 +263,29 @@ jobs:
 
 ## 七、版本历史
 
-### v6.0 (2026-04-29) — 当前版本
+### v7.0 (2026-04-29) — 当前版本
+
+**文件**: `index.html` + `data_fetch.py`
+
+**P0 修复**：
+- 年份硬编码 → 动态计算 `str(year % 100).zfill(2)`
+- UTC时区偏移 → today/currentYear 改用 DATA_DATE
+- tableCache → 改为全局变量
+
+**P1 改进**：
+- 气温数据表恢复（tableCache定义在loadCity调用前）
+- 多城市对比双图表（MAX TEMP + MIN TEMP）
+- 数据更新时间展示（Footer显示DATA_DATE）
+- 日历模块背景色统一为深色
+
+**P2 优化**：
+- localStorage记忆城市标签折叠状态
+- 城市对话框高度460px→520px，显示更多城市
+- 城市对话框显示数量统计（"337 城市" / "匹配数 / 337"）
+- 穿衣建议改为"最大风速"（Open-Meteo ws字段）
+- KPI卡片样式优化（数字居中32px，标签在数字上方）
+
+### v6.0 (2026-04-29)
 
 **文件**: `index.html`（完全重写，数据驱动）
 
@@ -319,22 +342,18 @@ jobs:
 
 ## 八、已知问题与技术债务
 
-### 🔴 P0（2027年会触发）
+### ✅ 已全部修复（v7.0）
 
-1. **年份硬编码**: `data_fetch.py` 第167行 `{"24": d24, "25": d25, "26": d26}`
-   - 2027年后前端的 `yearKeys` 变成 `["25","26","27"]`，对不上
-   - **修复方案**: 改为动态计算 `str(year % 100)`
+- ~~年份硬编码~~ → 动态计算 `str(year % 100)`
+- ~~UTC时区偏移~~ → today/currentYear 改用 DATA_DATE
+- ~~tableCache未定义~~ → 改为全局变量
+- ~~气温数据表报错~~ → 恢复并修复合并问题
+- ~~多城市对比缺最低温~~ → 双图表 MAX+MIN
 
-### 🟡 P1（特定时段影响）
+### 🟢 P2（可选增强）
 
-2. **UTC 时区偏移**: `new Date().toISOString()` 用 UTC
-   - 北京时间 00:00~08:00 访问时 `today` 会偏移到前一天
-   - **修复方案**: 改用 `new Date().toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'})`
-
-### 🟢 P2（功能增强）
-
-3. 穿衣指数仅当天可用（和风天气免费版限制）
-4. 多城市对比只展示最高温，缺少最低温和温差
+- 图表加载骨架屏（数据预加载，渲染快，暂不需要）
+- 穿衣指数（和风天气免费版限制，仅当天可用）
 
 ---
 
