@@ -201,11 +201,6 @@
         border-color: rgba(60,100,140,0.2);
         box-shadow: 0 6px 18px rgba(0,0,0,0.3);
     }
-    .kpi-bar { height: 2px; border-radius: 1px; margin-bottom: 10px; width: 100%; }
-    .kpi-bar-red    { background: linear-gradient(90deg, rgba(180,70,60,0.7), rgba(200,80,65,0.5)); }
-    .kpi-bar-blue   { background: linear-gradient(90deg, rgba(50,110,160,0.7), rgba(60,130,180,0.5)); }
-    .kpi-bar-green  { background: linear-gradient(90deg, rgba(45,120,75,0.7), rgba(55,140,90,0.5)); }
-    .kpi-bar-purple { background: linear-gradient(90deg, rgba(100,70,140,0.7), rgba(120,85,160,0.5)); }
     .kpi-value { font-size: 32px; font-weight: 900; line-height: 1.1; letter-spacing: -1px; }
     .kpi-label {
         font-size: 9px; color: rgba(120,150,180,0.5);
@@ -415,48 +410,24 @@
         <div id="kpiBody" style="transition:all 0.3s;">
             <div class="kpi-grid">
                 <div class="kpi-card kpi-red">
-                    <div class="kpi-bar kpi-bar-red"></div>
-                    <div class="kpi-card-top">
-                        <div>
-                            <div class="kpi-label">最高气温</div>
-                            <div class="kpi-value" id="k1">--°C</div>
-                            <div class="kpi-hint" id="k1hint"></div>
-                        </div>
-                        <div class="kpi-icon">▲</div>
-                    </div>
+                    <div class="kpi-label">最高气温</div>
+                    <div class="kpi-value" id="k1">--°C</div>
+                    <div class="kpi-hint" id="k1hint"></div>
                 </div>
                 <div class="kpi-card kpi-blue">
-                    <div class="kpi-bar kpi-bar-blue"></div>
-                    <div class="kpi-card-top">
-                        <div>
-                            <div class="kpi-label">最低气温</div>
-                            <div class="kpi-value" id="k2">--°C</div>
-                            <div class="kpi-hint" id="k2hint"></div>
-                        </div>
-                        <div class="kpi-icon">▼</div>
-                    </div>
+                    <div class="kpi-label">最低气温</div>
+                    <div class="kpi-value" id="k2">--°C</div>
+                    <div class="kpi-hint" id="k2hint"></div>
                 </div>
                 <div class="kpi-card kpi-green">
-                    <div class="kpi-bar kpi-bar-green"></div>
-                    <div class="kpi-card-top">
-                        <div>
-                            <div class="kpi-label">天气状况</div>
-                            <div class="kpi-value" id="k3" style="font-size:17px;">--</div>
-                            <div class="kpi-hint">实时天气</div>
-                        </div>
-                        <div class="kpi-icon">◈</div>
-                    </div>
+                    <div class="kpi-label">天气状况</div>
+                    <div class="kpi-value" id="k3">--</div>
+                    <div class="kpi-hint">实时天气</div>
                 </div>
                 <div class="kpi-card kpi-purple">
-                    <div class="kpi-bar kpi-bar-purple"></div>
-                    <div class="kpi-card-top">
-                        <div>
-                            <div class="kpi-label">风力</div>
-                            <div class="kpi-value" id="k4" style="font-size:15px;">--</div>
-                            <div class="kpi-hint">和风天气</div>
-                        </div>
-                        <div class="kpi-icon">✦</div>
-                    </div>
+                    <div class="kpi-label">风力</div>
+                    <div class="kpi-value" id="k4">--</div>
+                    <div class="kpi-hint">和风天气</div>
                 </div>
             </div>
         </div>
