@@ -119,7 +119,7 @@
         transition: all 0.3s;
         overflow: hidden;
     }
-    .city-grid.collapsed {
+    #cityBar.hidden {
         display: none;
     }
     .city-grid.expanded {
@@ -368,6 +368,10 @@
                 </div>
             </div>
             <div class="header-right">
+                <button class="collapse-btn" id="cityCollapseBtn" onclick="toggleCityGrid()" title="折叠城市标签" style="margin-right:8px;">
+                    <span id="cityArrow" style="display:inline-flex;transition:transform 0.3s;">▲</span>
+                    <span id="cityCollapseText" style="white-space:nowrap;">收起</span>
+                </button>
                 <div style="position:relative;">
                     <input class="city-input" type="text" id="mainCityInput" placeholder="搜索城市..." autocomplete="off" />
                     <div class="city-dropdown" id="mainCityDropdown"></div>
@@ -381,14 +385,10 @@
             </div>
         </div>
         <!-- 城市标签栏 -->
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div class="city-grid" id="cityGrid" style="flex:1;">
+        <div id="cityBar">
+            <div class="city-grid" id="cityGrid">
                 <!-- 由 JS 渲染 -->
             </div>
-            <button class="collapse-btn" id="cityCollapseBtn" onclick="toggleCityGrid()" title="折叠城市标签">
-                <span id="cityArrow" style="display:inline-flex;transition:transform 0.3s;">▲</span>
-                <span id="cityCollapseText" style="white-space:nowrap;">收起</span>
-            </button>
         </div>
     </div>
 
@@ -850,15 +850,15 @@ function renderCityGrid() {
 }
 
 function toggleCityGrid() {
-    var grid = document.getElementById('cityGrid');
+    var bar = document.getElementById('cityBar');
     var arrow = document.getElementById('cityArrow');
     var text = document.getElementById('cityCollapseText');
-    if (grid.style.display === 'none') {
-        grid.style.display = '';
+    if (bar.classList.contains('hidden')) {
+        bar.classList.remove('hidden');
         arrow.style.transform = '';
         text.textContent = '收起';
     } else {
-        grid.style.display = 'none';
+        bar.classList.add('hidden');
         arrow.style.transform = 'rotate(180deg)';
         text.textContent = '展开';
     }
