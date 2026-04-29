@@ -603,9 +603,6 @@ function initMainSearch() {
     const drop = document.getElementById('mainCityDropdown');
     const clr = document.getElementById('mainCityClear');
     mainSearchCtrl = createCitySearch(inp, drop, (name) => {
-        // visible debug: write state to header title so user can see
-        const yk = WEATHER_DATA[name] ? Object.keys(WEATHER_DATA[name]).sort().slice(-3) : [];
-        document.getElementById('headerTitle').textContent = '>>> ' + name + ' yearKeys=' + yk.join(',') + ' LOADING...';
         loadCity(name);
     }, clr);
 }
