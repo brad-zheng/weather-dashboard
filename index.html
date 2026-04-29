@@ -704,6 +704,59 @@ function fmtShort(d) {
     return parseInt(p[1]) + '/' + parseInt(p[2]);
 }
 
+// 提取 MM-DD（去掉年份），用于跨年份日期对齐
+function mmdd(isoDate) {
+    return isoDate.substring(5); // "2024-04-29" → "04-29"
+}
+
+// 在某年数据中，按 MM-DD 查找对应日期的索引；找不到返回 -1
+function findDateByMMDD(data, mmddStr) {
+    if (!data || !data.time) return -1;
+    for (var i = 0; i < data.time.length; i++) {
+        if (data.time[i].substring(5) === mmddStr) return i;
+    }
+    return -1;
+}
+
+// 给定当年数据中的日期范围 [refStart, refEnd)（索引），
+// 返回另一个年份数据中对应 MM-DD 日期的 { startIdx, endIdx, values: [v or null...] }
+function alignByDate(refData, targetData, refStart, refEnd, field) {
+    var result = [];
+    for (var i = refStart; i < refEnd; i++) {
+        var md = refData.time[i].substring(5); // "04-29"
+        var idx = findDateByMMDD(targetData, md);
+        if (idx >= 0) {
+            result.push(targetData[field][idx]);
+        } else {
+            result.push(null);
+        }
+    }
+    return result;
+}
+
+// 同 alignByDate 但返回整个 record { time, max, min, wc, ws, dress } 各字段对齐
+function alignRecord(refData, targetData, refStart, refEnd) {
+    var result = { max: [], min: [], wc: [], ws: [], dress: [] };
+    for (var i = refStart; i < refEnd; i++) {
+        var md = refData.time[i].substring(5);
+        var idx = findDateByMMDD(targetData, md);
+        if (idx >= 0) {
+            result.max.push(targetData.max[idx]);
+            result.min.push(targetData.min[idx]);
+            result.wc.push(targetData.wc ? targetData.wc[idx] : null);
+            result.ws.push(targetData.ws ? targetData.ws[idx] : null);
+            result.dress.push(targetData.dress ? targetData.dress[idx] : null);
+        } else {
+            result.max.push(null);
+            result.min.push(null);
+            result.wc.push(null);
+            result.ws.push(null);
+            result.dress.push(null);
+        }
+    }
+    return result;
+}
+
 function showToast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg;
@@ -913,6 +966,10 @@ function renderWeatherCalendar(cityData, today) {
     var startIdx = todayIdx;
     var endIdx = Math.min(todayIdx + 16, d26.time.length);
 
+    // 按月/日对齐 2025、2024 数据
+    var aligned25 = d25 ? alignRecord(d26, d25, startIdx, endIdx) : null;
+    var aligned24 = d24 ? alignRecord(d26, d24, startIdx, endIdx) : null;
+
     // 天气小结
     var futureWc = d26.wc ? d26.wc.slice(startIdx, endIdx) : [];
     var goodDays = futureWc.filter(isGoodWeather).length;
@@ -929,11 +986,11 @@ function renderWeatherCalendar(cityData, today) {
     summaryHtml += '</div>';
     document.getElementById('forecastSummary').innerHTML = summaryHtml;
 
-    // 日历表格
+    // 日历表格 - 构建对齐后的年份数据结构
     var years = [
-        { key: yearKeys[0], label: String(currentYear-2), data: d24, cssClass: 'wc-y24' },
-        { key: yearKeys[1], label: String(currentYear-1), data: d25, cssClass: 'wc-y25' },
-        { key: yearKeys[2], label: String(currentYear), data: d26, cssClass: 'wc-y26' },
+        { key: yearKeys[0], label: String(currentYear-2), data: aligned24, cssClass: 'wc-y24' },
+        { key: yearKeys[1], label: String(currentYear-1), data: aligned25, cssClass: 'wc-y25' },
+        { key: yearKeys[2], label: String(currentYear), data: null, cssClass: 'wc-y26' },
     ];
 
     var html = '<div class="forecast-summary">';
@@ -961,25 +1018,33 @@ function renderWeatherCalendar(cityData, today) {
     html += '</tr></thead><tbody>';
 
     years.slice().reverse().forEach(function(year) {
-        if (!year.data) return;
+        if (!year.data && year.key !== yearKeys[2]) return;
         html += '<tr><td class="wc-row-year ' + year.cssClass + '">' + year.label + '</td>';
-        for (var i = startIdx; i < endIdx; i++) {
-            var isToday = (year.key === yearKeys[2]) && (i === todayIdx);
-            var isFutureCell = (year.key === yearKeys[2]) && (year.data.time[i] > today);
-            var isOtherFuture = (year.key !== yearKeys[2]) && (year.data.time[i] > today);
+        for (var i = 0; i < (endIdx - startIdx); i++) {
+            var isToday = (year.key === yearKeys[2]) && (i + startIdx === todayIdx);
+            var isFutureCell = (year.key === yearKeys[2]) && (d26.time[i + startIdx] > today);
+            var isOtherFuture = (year.key !== yearKeys[2]) && (d26.time[i + startIdx] > today);
             var cls = 'wc-cell';
             if (isToday) cls += ' today-cell';
             if (isFutureCell || isOtherFuture) cls += ' future-cell';
 
-            var wc = year.data.wc ? year.data.wc[i] : null;
-            var emoji = wc != null ? getWmoEmoji(wc) : '--';
-            var short = wc != null ? getWmoShort(wc) : '--';
-            var maxT = year.data.max[i];
-            var minT = year.data.min[i];
+            var wc, maxT, minT;
+            if (year.key === yearKeys[2]) {
+                // 2026 直接读原始数据
+                var si = i + startIdx;
+                wc = d26.wc ? d26.wc[si] : null;
+                maxT = d26.max[si];
+                minT = d26.min[si];
+            } else {
+                // 2025/2024 读对齐数据
+                wc = year.data.wc[i];
+                maxT = year.data.max[i];
+                minT = year.data.min[i];
+            }
 
             html += '<td class="' + cls + '">';
-            html += '<div class="wc-emoji">' + emoji + '</div>';
-            html += '<div class="wc-text">' + short + '</div>';
+            html += '<div class="wc-emoji">' + (wc != null ? getWmoEmoji(wc) : '--') + '</div>';
+            html += '<div class="wc-text">' + (wc != null ? getWmoShort(wc) : '--') + '</div>';
             html += '<div class="wc-temp">';
             html += '<span class="wc-temp-high">' + (maxT != null ? Math.round(maxT) + '°' : '--') + '</span>';
             html += '<span class="wc-temp-low">' + (minT != null ? Math.round(minT) + '°' : '--') + '</span>';
@@ -1058,10 +1123,14 @@ function makeChartOpts(todayLineColor, todayLabelColor) {
 var todayLocalIdx = 14; // 全局，由各 chart render 函数设置
 
 function buildDatasets(dataArr, d26, d25, d24, startIdx, endIdx) {
+    // d26 用原始数据切片，d25/d24 用按月/日对齐后的数据
+    var d26Slice = d26[dataArr].slice(startIdx, endIdx);
+    var d25Slice = d25 ? alignByDate(d26, d25, startIdx, endIdx, dataArr) : [];
+    var d24Slice = d24 ? alignByDate(d26, d24, startIdx, endIdx, dataArr) : [];
     return [
         {
             label: String(currentYear),
-            data: d26[dataArr].slice(startIdx, endIdx),
+            data: d26Slice,
             borderColor: COLORS.blue,
             backgroundColor: 'rgba(74,144,184,0.08)',
             tension: 0.35, pointRadius: 2.5, pointHoverRadius: 5,
@@ -1069,7 +1138,7 @@ function buildDatasets(dataArr, d26, d25, d24, startIdx, endIdx) {
         },
         {
             label: String(currentYear-1),
-            data: d25 ? d25[dataArr].slice(startIdx, endIdx) : [],
+            data: d25Slice,
             borderColor: COLORS.green,
             backgroundColor: 'rgba(58,154,98,0.06)',
             tension: 0.35, pointRadius: 2, pointHoverRadius: 4,
@@ -1077,7 +1146,7 @@ function buildDatasets(dataArr, d26, d25, d24, startIdx, endIdx) {
         },
         {
             label: String(currentYear-2),
-            data: d24 ? d24[dataArr].slice(startIdx, endIdx) : [],
+            data: d24Slice,
             borderColor: COLORS.red,
             backgroundColor: 'rgba(168,104,88,0.05)',
             tension: 0.35, pointRadius: 2, pointHoverRadius: 4,
@@ -1107,8 +1176,10 @@ function renderMaxTempChart(cityData, today) {
     // 统计
     var curSlice = d26.max.slice(startIdx, endIdx);
     var curAvg = Math.round(curSlice.reduce(function(a,b){return a+b;},0) / curSlice.length);
-    var histSlice = d24.max.slice(startIdx, endIdx).concat(d25.max.slice(startIdx, endIdx));
-    var histAvg = Math.round(histSlice.reduce(function(a,b){return a+b;},0) / histSlice.length);
+    var histMax25 = d25 ? alignByDate(d26, d25, startIdx, endIdx, 'max') : [];
+    var histMax24 = d24 ? alignByDate(d26, d24, startIdx, endIdx, 'max') : [];
+    var histSlice = histMax25.concat(histMax24).filter(function(v){return v != null;});
+    var histAvg = histSlice.length > 0 ? Math.round(histSlice.reduce(function(a,b){return a+b;},0) / histSlice.length) : 0;
     var diff = curAvg - histAvg;
     var diffStr = diff > 0 ? '+' + diff + '°' : diff + '°';
     var diffColor = diff > 0 ? '#b86050' : '#4a90b8';
@@ -1167,10 +1238,14 @@ function renderDiffTempChart(cityData, today) {
     var labels = [];
     for (var i = startIdx; i < endIdx; i++) labels.push(fmtShort(d26.time[i]));
 
-    // 计算温差
+    // 计算温差（按月/日对齐）
     var diff26 = d26.max.slice(startIdx, endIdx).map(function(v, i) { return v - d26.min[startIdx + i]; });
-    var diff25 = d25 ? d25.max.slice(startIdx, endIdx).map(function(v, i) { return v - d25.min[startIdx + i]; }) : [];
-    var diff24 = d24 ? d24.max.slice(startIdx, endIdx).map(function(v, i) { return v - d24.min[startIdx + i]; }) : [];
+    var aMax25 = d25 ? alignByDate(d26, d25, startIdx, endIdx, 'max') : [];
+    var aMin25 = d25 ? alignByDate(d26, d25, startIdx, endIdx, 'min') : [];
+    var diff25 = aMax25.map(function(v, i) { return (v != null && aMin25[i] != null) ? v - aMin25[i] : null; });
+    var aMax24 = d24 ? alignByDate(d26, d24, startIdx, endIdx, 'max') : [];
+    var aMin24 = d24 ? alignByDate(d26, d24, startIdx, endIdx, 'min') : [];
+    var diff24 = aMax24.map(function(v, i) { return (v != null && aMin24[i] != null) ? v - aMin24[i] : null; });
 
     if (chDiff) chDiff.destroy();
     chDiff = new Chart(document.getElementById('diffTempChart'), {
@@ -1457,6 +1532,10 @@ function renderTempTable(cityData, today) {
     var startIdx = Math.max(0, todayIdx - 15);
     var endIdx = Math.min(d26.time.length, todayIdx + 16);
 
+    // 按月/日对齐 2025、2024 数据
+    var aligned25 = d25 ? alignRecord(d26, d25, startIdx, endIdx) : null;
+    var aligned24 = d24 ? alignRecord(d26, d24, startIdx, endIdx) : null;
+
     document.getElementById('tableSub').textContent = '今天为中线 · 前后各15天 · ' + currentCity;
 
     var tbody = document.getElementById('tempTableBody');
@@ -1467,9 +1546,11 @@ function renderTempTable(cityData, today) {
     // 缓存数据用于导出
     tableCache.labels = [];
     tableCache.data = { max26: [], min26: [], max25: [], min25: [], max24: [], min24: [] };
+    tableCache.todayLocalIdx = todayIdx - startIdx;
 
     for (var i = startIdx; i < endIdx; i++) {
         var isToday = (i === todayIdx);
+        var localI = i - startIdx; // 在对齐数组中的索引
         var tr = document.createElement('tr');
         tr.style.cssText = 'border-bottom:1px solid rgba(60,100,140,0.04);transition:background 0.15s;';
         if (isToday) tr.style.background = 'rgba(160,136,40,0.04)';
@@ -1489,10 +1570,11 @@ function renderTempTable(cityData, today) {
         }
         tr.appendChild(tdDate);
 
+        // 使用对齐后的数据
         var dataArrs = [
             d26.max[i], d26.min[i],
-            d25 ? d25.max[i] : null, d25 ? d25.min[i] : null,
-            d24 ? d24.max[i] : null, d24 ? d24.min[i] : null
+            aligned25 ? aligned25.max[localI] : null, aligned25 ? aligned25.min[localI] : null,
+            aligned24 ? aligned24.max[localI] : null, aligned24 ? aligned24.min[localI] : null
         ];
         var colors = ['#a86858', '#4a88a8', '#a86858', '#4a88a8', '#a86858', '#4a88a8'];
 
@@ -1510,10 +1592,10 @@ function renderTempTable(cityData, today) {
         tableCache.labels.push(d26.time[i]);
         tableCache.data.max26.push(d26.max[i]);
         tableCache.data.min26.push(d26.min[i]);
-        tableCache.data.max25.push(d25 ? d25.max[i] : null);
-        tableCache.data.min25.push(d25 ? d25.min[i] : null);
-        tableCache.data.max24.push(d24 ? d24.max[i] : null);
-        tableCache.data.min24.push(d24 ? d24.min[i] : null);
+        tableCache.data.max25.push(aligned25 ? aligned25.max[localI] : null);
+        tableCache.data.min25.push(aligned25 ? aligned25.min[localI] : null);
+        tableCache.data.max24.push(aligned24 ? aligned24.max[localI] : null);
+        tableCache.data.min24.push(aligned24 ? aligned24.min[localI] : null);
     }
 }
 
@@ -1528,7 +1610,7 @@ function exportTempTable() {
     var wsData = [['日期', currentYear + '最高温', currentYear + '最低温', (currentYear-1) + '最高温', (currentYear-1) + '最低温', (currentYear-2) + '最高温', (currentYear-2) + '最低温']];
     for (var i = 0; i < tableCache.labels.length; i++) {
         wsData.push([
-            tableCache.labels[i] + (i === 14 ? ' (今天)' : ''),
+            tableCache.labels[i] + (i === tableCache.todayLocalIdx ? ' (今天)' : ''),
             d.max26[i] != null ? Math.round(d.max26[i]) : null,
             d.min26[i] != null ? Math.round(d.min26[i]) : null,
             d.max25[i] != null ? Math.round(d.max25[i]) : null,
