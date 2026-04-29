@@ -957,6 +957,9 @@ function loadCity(name) {
     renderTempTable(cityData, today);
 }
 
+// 气温数据表缓存（必须在函数外定义，Excel导出用）
+var tableCache = { labels: [], data: {} };
+
 // ═══════════════════════════════════════════════════
 // 天气日历（未来15天 · 三年对比）
 // ═══════════════════════════════════════════════════
@@ -1530,7 +1533,6 @@ var CityCompare = (function() {
 // ═══════════════════════════════════════════════════
 // 气温数据表（数据驱动版本）
 // ═══════════════════════════════════════════════════
-var tableCache = { labels: [], data: {} }; // 用于 Excel 导出
 
 function renderTempTable(cityData, today) {
     console.log('renderTempTable called', { today: today, cityDataKeys: Object.keys(cityData), yearKeys: yearKeys });
