@@ -427,7 +427,7 @@
                 <div class="kpi-card kpi-purple">
                     <div class="kpi-label">风力</div>
                     <div class="kpi-value" id="k4">--</div>
-                    <div class="kpi-hint">和风天气</div>
+                    <div class="kpi-hint">Open-Meteo</div>
                 </div>
             </div>
         </div>
@@ -935,8 +935,8 @@ function loadCity(name) {
     document.getElementById('k2').textContent = Math.round(d.min[idx]) + '°C';
     var wc = d.wc ? d.wc[idx] : null;
     document.getElementById('k3').textContent = wc != null ? getWmoText(wc) : '--';
-    var dress = d.dress ? d.dress[idx] : null;
-    document.getElementById('k4').textContent = dress || '--';
+    var ws = d.ws ? d.ws[idx] : null;
+    document.getElementById('k4').textContent = ws != null ? ws + ' km/h' : '--';
 
     // 昨日温差
     if (idx > 0) {
